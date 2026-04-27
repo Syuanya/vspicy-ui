@@ -1,0 +1,21 @@
+可选前端增强说明：
+
+本补丁已更新 src/api/hlsRepair.ts，新增：
+
+previewHlsRepairVerify(limit)
+verifyHlsRepairTasks({ limit, dryRun, markFailedOnError })
+verifyHlsRepairTask(id, { dryRun, markFailedOnError })
+
+可以在 /admin/hls-repair 页面增加：
+
+1. 复检预览
+await previewHlsRepairVerify(10)
+
+2. dryRun 复检
+await verifyHlsRepairTasks({ limit: 10, dryRun: true, markFailedOnError: false })
+
+3. 正式复检
+await verifyHlsRepairTasks({ limit: 10, dryRun: false, markFailedOnError: false })
+
+4. 单任务复检
+await verifyHlsRepairTask(item.id, { dryRun: false, markFailedOnError: false })

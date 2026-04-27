@@ -1,0 +1,18 @@
+可选前端增强说明：
+
+如果你想在 /admin/hls-repair 页面增加执行按钮，可在 HlsRepair.vue 中引入：
+
+import {
+  previewHlsRepairExecute,
+  executeHlsRepairTasks,
+  executeHlsRepairTask
+} from '../../api/hlsRepair'
+
+然后新增按钮调用：
+
+await previewHlsRepairExecute(10)
+await executeHlsRepairTasks({ limit: 10, dryRun: true, allowPending: false })
+await executeHlsRepairTasks({ limit: 10, dryRun: false, allowPending: false })
+await executeHlsRepairTask(item.id, { dryRun: false, allowPending: false })
+
+本补丁已经更新 api/hlsRepair.ts，后端接口可直接用。
