@@ -1,0 +1,72 @@
+.vspicy-hover-dropdown {
+  position: relative;
+}
+
+.vspicy-hover-dropdown > .vspicy-hover-menu {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.vspicy-hover-dropdown.vspicy-hover-open > .vspicy-hover-menu {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.vspicy-hover-dropdown .vspicy-hover-menu {
+  z-index: 3000 !important;
+}
+
+.vspicy-hover-dropdown .vspicy-hover-trigger {
+  cursor: pointer;
+}
+
+.vspicy-hover-dropdown.vspicy-hover-open .vspicy-hover-trigger {
+  background: rgba(59, 130, 246, 0.08);
+}
+
+.vspicy-hover-dropdown.vspicy-hover-open > .nav-dropdown-menu,
+.vspicy-hover-dropdown.vspicy-hover-open > .dropdown-menu,
+.vspicy-hover-dropdown.vspicy-hover-open > .menu-dropdown-list,
+.vspicy-hover-dropdown.vspicy-hover-open > .header-dropdown-menu,
+.vspicy-hover-dropdown.vspicy-hover-open > .top-nav-dropdown-menu,
+.vspicy-hover-dropdown.vspicy-hover-open > .submenu,
+.vspicy-hover-dropdown.vspicy-hover-open > .sub-menu,
+.vspicy-hover-dropdown.vspicy-hover-open > .menu-panel,
+.vspicy-hover-dropdown.vspicy-hover-open > .dropdown-panel,
+.vspicy-hover-dropdown.vspicy-hover-open > .el-menu--popup,
+.vspicy-hover-dropdown.vspicy-hover-open > ul,
+.vspicy-hover-dropdown.vspicy-hover-open > div[role="menu"] {
+  display: block !important;
+  visibility: visible !important;
+  opacity: 1 !important;
+  pointer-events: auto !important;
+}
+
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .nav-dropdown-menu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .dropdown-menu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .menu-dropdown-list,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .header-dropdown-menu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .top-nav-dropdown-menu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .submenu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .sub-menu,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .menu-panel,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .dropdown-panel,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > .el-menu--popup,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > ul,
+.vspicy-hover-dropdown:not(.vspicy-hover-open) > div[role="menu"] {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+}
+
+.vspicy-hover-menu a,
+.vspicy-hover-menu button,
+.vspicy-hover-menu .menu-item,
+.vspicy-hover-menu .dropdown-item {
+  cursor: pointer;
+}

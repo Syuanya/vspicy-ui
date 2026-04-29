@@ -5,6 +5,7 @@ import { unreadNotificationCount } from './api/notification'
 
 const permissionView = ref<any>(null)
 const unreadCount = ref(0)
+const openGroupName = ref<string | null>(null)
 
 type NavLink = {
   path: string
@@ -36,8 +37,13 @@ const navGroups: NavGroup[] = [
   {
     name: '管理',
     links: [
+      { path: '/admin/ops-hub', name: '运维中心', permissionCode: 'video:ops:hub:view' },
+      { path: '/admin/service-health', name: '服务健康', permissionCode: 'video:service:health:view' },
+      { path: '/admin/api-diagnostics', name: 'API诊断', permissionCode: 'video:ops:hub:view' },
       { path: '/admin/dashboard', name: '数据大屏', permissionCode: 'dashboard:view' },
       { path: '/admin/transcode-tasks', name: '转码任务', permissionCode: 'video:transcode:view' },
+      { path: '/admin/playback-readiness-batch', name: '播放就绪', permissionCode: 'video:playback:readiness:view' },
+      { path: '/admin/operation-audit', name: '操作审计', permissionCode: 'video:operation:audit:view' },
       { path: '/admin/audit-tasks', name: '审核任务', permissionCode: 'content:audit:view' },
       { path: '/admin/sensitive-words', name: '敏感词', permissionCode: 'content:sensitive:view' },
       { path: '/admin/profiles', name: '画像', permissionCode: 'profile:view' },
@@ -97,6 +103,32 @@ const primaryLinks = computed(() => {
     .filter(canSee)
 })
 
+function openGroup(groupName: string) {
+  openGroupName.value = groupName
+}
+
+function closeGroup(groupName?: string) {
+  if (!groupName || openGroupName.value === groupName) {
+    openGroupName.value = null
+  }
+}
+
+function closeAllGroups() {
+  openGroupName.value = null
+}
+
+function onGroupKeydown(event: KeyboardEvent, groupName: string) {
+  if (event.key === 'Escape') {
+    closeGroup(groupName)
+    return
+  }
+
+  if (event.key === 'Enter' || event.key === ' ') {
+    event.preventDefault()
+    openGroup(groupName)
+  }
+}
+
 async function loadUnreadCount() {
   try {
     const res: any = await unreadNotificationCount()
@@ -127,15 +159,38 @@ onMounted(async () => {
       </nav>
 
       <nav class="group-nav">
-        <details v-for="group in visibleGroups" :key="group.name" class="nav-menu">
-          <summary>{{ group.name }}</summary>
-          <div class="nav-dropdown">
-            <RouterLink v-for="link in group.links" :key="link.path" :to="link.path">
+        <div
+          v-for="group in visibleGroups"
+          :key="group.name"
+          class="nav-menu"
+          :class="{ open: openGroupName === group.name }"
+          data-hover-dropdown
+          @mouseenter="openGroup(group.name)"
+          @mouseleave="closeGroup(group.name)"
+          @focusin="openGroup(group.name)"
+          @keydown="onGroupKeydown($event, group.name)"
+        >
+          <button
+            class="nav-menu-trigger"
+            type="button"
+            :aria-expanded="openGroupName === group.name"
+            @click.prevent="openGroup(group.name)"
+          >
+            {{ group.name }}
+          </button>
+
+          <div v-show="openGroupName === group.name" class="nav-dropdown" data-hover-dropdown-menu>
+            <RouterLink
+              v-for="link in group.links"
+              :key="link.path"
+              :to="link.path"
+              @click="closeAllGroups"
+            >
               {{ link.name }}
               <span v-if="link.badge && unreadCount > 0" class="badge">{{ unreadCount }}</span>
             </RouterLink>
           </div>
-        </details>
+        </div>
       </nav>
     </header>
 
@@ -185,7 +240,7 @@ onMounted(async () => {
 }
 
 .quick-nav a,
-.nav-menu summary {
+.nav-menu-trigger {
   display: inline-flex;
   align-items: center;
   min-height: 34px;
@@ -199,7 +254,8 @@ onMounted(async () => {
 }
 
 .quick-nav a:hover,
-.nav-menu summary:hover {
+.nav-menu-trigger:hover,
+.nav-menu.open .nav-menu-trigger {
   background: #f3f4f6;
   color: #111827;
 }
@@ -213,21 +269,22 @@ onMounted(async () => {
   position: relative;
 }
 
-.nav-menu summary {
+.nav-menu-trigger {
   list-style: none;
   border: 1px solid #e5e7eb;
   background: #ffffff;
+  font: inherit;
 }
 
-.nav-menu summary::-webkit-details-marker {
-  display: none;
-}
-
-.nav-menu summary::after {
+.nav-menu-trigger::after {
   content: '▾';
   margin-left: 6px;
   font-size: 11px;
   color: #6b7280;
+}
+
+.nav-menu.open .nav-menu-trigger::after {
+  transform: rotate(180deg);
 }
 
 .nav-dropdown {

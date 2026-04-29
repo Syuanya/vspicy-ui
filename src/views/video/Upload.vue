@@ -1,7 +1,8 @@
 <script setup lang="ts">
 import { ref } from 'vue'
 import { useRouter } from 'vue-router'
-import { completeUpload, createUploadTask, getPlayInfo, uploadVideoChunk } from '../../api/video'
+import { completeUpload, createUploadTask, uploadVideoChunk } from '../../api/video'
+import TranscodeStatusCard from '../../components/video/TranscodeStatusCard.vue'
 
 const router = useRouter()
 const file = ref<File | null>(null)
@@ -9,13 +10,11 @@ const logs = ref<string[]>([])
 const uploading = ref(false)
 const chunkSize = 2 * 1024 * 1024
 const result = ref<any>(null)
+const transcodeReady = ref(false)
+const transcodeProgress = ref<any>(null)
 
 function addLog(message: string) {
   logs.value.unshift(`[${new Date().toLocaleTimeString()}] ${message}`)
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms))
 }
 
 async function sha256(blob: Blob) {
@@ -28,33 +27,9 @@ function onFileChange(event: Event) {
   const input = event.target as HTMLInputElement
   file.value = input.files?.[0] || null
   result.value = null
+  transcodeReady.value = false
+  transcodeProgress.value = null
   logs.value = []
-}
-
-async function waitPublished(videoId: number) {
-  addLog('后台转码中，开始轮询视频状态...')
-  for (let i = 0; i < 120; i++) {
-    const res: any = await getPlayInfo(videoId)
-    if (res.code !== 0) {
-      addLog(`查询状态失败: ${res.message}`)
-      await sleep(2000)
-      continue
-    }
-
-    const status = res.data.video.status
-    addLog(`当前视频状态: ${status}`)
-
-    if (status === 'PUBLISHED') {
-      return res.data
-    }
-    if (status === 'TRANSCODE_FAILED') {
-      throw new Error('视频转码失败，请查看后端日志')
-    }
-
-    await sleep(2000)
-  }
-
-  throw new Error('等待转码超时')
 }
 
 async function startUpload() {
@@ -64,6 +39,9 @@ async function startUpload() {
   }
 
   uploading.value = true
+  transcodeReady.value = false
+  transcodeProgress.value = null
+
   try {
     addLog('计算完整文件 SHA-256...')
     const fileHash = await sha256(file.value)
@@ -109,18 +87,40 @@ async function startUpload() {
     }
 
     result.value = completeRes.data
+    transcodeReady.value = false
     addLog(`任务提交成功，videoId=${result.value.videoId}, status=${result.value.status}`)
-
-    const playInfo = await waitPublished(result.value.videoId)
-    result.value.status = playInfo.video.status
-    result.value.localHlsUrl = playInfo.localHlsUrl
-    addLog(`转码完成，可播放: ${playInfo.localHlsUrl}`)
+    addLog('转码状态卡片已启动自动刷新，HLS 就绪后可进入播放页。')
   } catch (e: any) {
     addLog(e?.message || '上传失败')
     alert(e?.message || '上传失败')
   } finally {
     uploading.value = false
   }
+}
+
+function onTranscodeLoaded(data: any) {
+  transcodeProgress.value = data
+  if (result.value) {
+    result.value.transcodeStatus = data.status
+  }
+}
+
+function onTranscodeReady(data: any) {
+  transcodeProgress.value = data
+  transcodeReady.value = true
+  if (result.value) {
+    result.value.status = 'PUBLISHED'
+    result.value.localHlsUrl = data.hlsManifestKey || result.value.localHlsUrl
+  }
+  addLog(`HLS 已就绪，可以播放。manifest=${data.hlsManifestKey || '-'}`)
+}
+
+function onTranscodeFailed(data: any) {
+  transcodeProgress.value = data
+  if (result.value) {
+    result.value.status = 'TRANSCODE_FAILED'
+  }
+  addLog(`转码失败：${data.errorMessage || data.lastDispatchError || '未知错误'}`)
 }
 
 function goPlayer() {
@@ -133,7 +133,7 @@ function goPlayer() {
 <template>
   <section class="card">
     <h2>视频分片上传 + 异步 HLS 转码</h2>
-    <p>当前版本：SHA-256、分片上传、合并、后台线程池异步 FFmpeg 转 m3u8、前端轮询状态。</p>
+    <p>当前版本：SHA-256、分片上传、合并、后台异步转码；上传完成后由转码状态卡片自动刷新。</p>
 
     <input type="file" accept="video/*" @change="onFileChange" />
     <div style="margin-top: 16px;">
@@ -145,11 +145,24 @@ function goPlayer() {
     <div v-if="result" class="card" style="margin-top: 20px; background: #f9fafb;">
       <h3>处理结果</h3>
       <p><strong>videoId:</strong> {{ result.videoId }}</p>
-      <p><strong>status:</strong> {{ result.status }}</p>
-      <p><strong>originPath:</strong> {{ result.originPath }}</p>
-      <p v-if="result.localHlsUrl"><strong>localHlsUrl:</strong> {{ result.localHlsUrl }}</p>
-      <button class="button" :disabled="result.status !== 'PUBLISHED'" @click="goPlayer">播放视频</button>
+      <p><strong>upload status:</strong> {{ result.status }}</p>
+      <p v-if="result.transcodeStatus"><strong>transcode status:</strong> {{ result.transcodeStatus }}</p>
+      <p><strong>originPath:</strong> {{ result.originPath || '-' }}</p>
+      <p v-if="result.localHlsUrl"><strong>localHlsUrl / manifest:</strong> {{ result.localHlsUrl }}</p>
+
+      <button class="button" :disabled="!transcodeReady" @click="goPlayer">
+        {{ transcodeReady ? '播放视频' : '等待 HLS 就绪' }}
+      </button>
     </div>
+
+    <TranscodeStatusCard
+      v-if="result?.videoId"
+      :video-id="Number(result.videoId)"
+      auto-refresh
+      @loaded="onTranscodeLoaded"
+      @ready="onTranscodeReady"
+      @failed="onTranscodeFailed"
+    />
 
     <div style="margin-top: 24px;">
       <h3>日志</h3>

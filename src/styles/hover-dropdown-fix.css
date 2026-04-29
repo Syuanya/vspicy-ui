@@ -1,0 +1,86 @@
+/*
+ * Phase72 global hover dropdown fix.
+ *
+ * Works with common nav structures:
+ * .nav-dropdown > .nav-dropdown-menu
+ * .dropdown > .dropdown-menu
+ * .menu-dropdown > .menu-dropdown-list
+ *
+ * Behavior:
+ * hover/focus-within => show
+ * mouse leave => hide by CSS
+ */
+
+.nav-dropdown,
+.dropdown,
+.menu-dropdown,
+.header-dropdown,
+.top-nav-dropdown {
+  position: relative;
+}
+
+.nav-dropdown-menu,
+.dropdown-menu,
+.menu-dropdown-list,
+.header-dropdown-menu,
+.top-nav-dropdown-menu {
+  display: none;
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  min-width: 220px;
+  background: #fff;
+  border: 1px solid #e5e7eb;
+  border-radius: 14px;
+  box-shadow: 0 16px 40px rgba(15, 23, 42, 0.14);
+  padding: 8px;
+  z-index: 1000;
+}
+
+.nav-dropdown:hover > .nav-dropdown-menu,
+.nav-dropdown:focus-within > .nav-dropdown-menu,
+.dropdown:hover > .dropdown-menu,
+.dropdown:focus-within > .dropdown-menu,
+.menu-dropdown:hover > .menu-dropdown-list,
+.menu-dropdown:focus-within > .menu-dropdown-list,
+.header-dropdown:hover > .header-dropdown-menu,
+.header-dropdown:focus-within > .header-dropdown-menu,
+.top-nav-dropdown:hover > .top-nav-dropdown-menu,
+.top-nav-dropdown:focus-within > .top-nav-dropdown-menu {
+  display: block;
+}
+
+.nav-dropdown-menu a,
+.dropdown-menu a,
+.menu-dropdown-list a,
+.header-dropdown-menu a,
+.top-nav-dropdown-menu a,
+.nav-dropdown-menu button,
+.dropdown-menu button,
+.menu-dropdown-list button,
+.header-dropdown-menu button,
+.top-nav-dropdown-menu button {
+  display: block;
+  width: 100%;
+  padding: 10px;
+  border-radius: 10px;
+  color: #111827;
+  text-align: left;
+  text-decoration: none;
+  background: transparent;
+  border: none;
+  cursor: pointer;
+}
+
+.nav-dropdown-menu a:hover,
+.dropdown-menu a:hover,
+.menu-dropdown-list a:hover,
+.header-dropdown-menu a:hover,
+.top-nav-dropdown-menu a:hover,
+.nav-dropdown-menu button:hover,
+.dropdown-menu button:hover,
+.menu-dropdown-list button:hover,
+.header-dropdown-menu button:hover,
+.top-nav-dropdown-menu button:hover {
+  background: #eff6ff;
+}

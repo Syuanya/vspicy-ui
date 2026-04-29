@@ -1,4 +1,4 @@
-﻿import { createRouter, createWebHistory } from 'vue-router'
+import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
 import VideoUpload from '../views/video/Upload.vue'
@@ -27,12 +27,10 @@ import HlsRepair from '../views/admin/HlsRepair.vue'
 import ObjectCleanup from '../views/admin/ObjectCleanup.vue'
 import StorageOpsConsole from '../views/admin/StorageOpsConsole.vue'
 import { hasPermission, loadPermissionView } from '../utils/permission'
-import { adminOpsRoutes } from './adminOpsRoutes'
 
 export const router = createRouter({
   history: createWebHistory(),
   routes: [
-    ...adminOpsRoutes,
     { path: '/', component: Home },
     { path: '/hot', component: Hot },
     { path: '/recommend', component: Recommend, meta: { permissionCode: 'recommend:view' } },
@@ -77,4 +75,3 @@ router.beforeEach(async (to) => {
   alert(`无前端路由权限：${permissionCode}`)
   return '/'
 })
-
