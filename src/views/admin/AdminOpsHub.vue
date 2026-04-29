@@ -7,6 +7,10 @@ import ApiState from '../../components/common/ApiState.vue'
 import AdminOpsNav from '../../components/admin/AdminOpsNav.vue'
 import ServiceHealthPanel from '../../components/admin/ServiceHealthPanel.vue'
 import RecentOperationAuditPanel from '../../components/admin/RecentOperationAuditPanel.vue'
+import OperationAuditRiskPanel from '../../components/admin/OperationAuditRiskPanel.vue'
+import OperationAuditAlertPanel from '../../components/admin/OperationAuditAlertPanel.vue'
+import OperationAuditAlertEventInbox from '../../components/admin/OperationAuditAlertEventInbox.vue'
+import OperationAuditAlertAutomationPanel from '../../components/admin/OperationAuditAlertAutomationPanel.vue'
 
 const router = useRouter()
 const message = ref('')
@@ -28,7 +32,8 @@ const groupTitles: Record<string, string> = {
   hlsRepair: 'HLS 修复',
   cleanup: '对象清理',
   storageAlert: '存储告警',
-  playbackReadiness: '播放就绪'
+  playbackReadiness: '播放就绪',
+  operationAudit: '操作审计告警'
 }
 
 async function load() {
@@ -89,6 +94,12 @@ onMounted(load)
 
     <RecentOperationAuditPanel :limit="10" />
 
+    <OperationAuditAlertPanel :hours="24" :limit="6" compact />
+    <OperationAuditAlertEventInbox :hours="24" :limit="8" compact />
+    <OperationAuditAlertAutomationPanel compact />
+
+    <OperationAuditRiskPanel :hours="24" :limit="6" compact />
+
     <ApiState
       :loading="summaryRequest.loading.value"
       :error="summaryRequest.error.value"
@@ -148,6 +159,7 @@ onMounted(load)
         <h3>建议处理顺序</h3>
         <ol>
           <li>先看服务健康：MySQL / Redis / MinIO / RocketMQ / FFmpeg / 存储目录。</li>
+          <li>再看操作审计告警：优先处理 _REJECTED 被拒绝高危操作。</li>
           <li>再看最近操作：确认是否有人执行过重跑、同步、清理等高危动作。</li>
           <li>再看转码分发健康：RocketMQ 不可用时确认 fallback 是否启用。</li>
           <li>处理转码失败和长期 PENDING / RUNNING 任务。</li>

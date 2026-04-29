@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { computed, onMounted, ref } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
+import { useRoute } from 'vue-router'
 import {
   buildOperationAuditExportUrl,
   getOperationAuditActions,
@@ -9,18 +10,28 @@ import {
 } from '../../api/operationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../../components/common/ApiState.vue'
+import OperationAuditRiskPanel from '../../components/admin/OperationAuditRiskPanel.vue'
+import OperationAuditAlertPanel from '../../components/admin/OperationAuditAlertPanel.vue'
+import OperationAuditAlertEventInbox from '../../components/admin/OperationAuditAlertEventInbox.vue'
+import OperationAuditAlertAutomationPanel from '../../components/admin/OperationAuditAlertAutomationPanel.vue'
+import OperationAuditEvidenceDrawer from '../../components/admin/OperationAuditEvidenceDrawer.vue'
 
+const route = useRoute()
 const statsRequest = useApiRequest(getOperationAuditStats)
 const actionsRequest = useApiRequest(getOperationAuditActions)
 const listRequest = useApiRequest(listOperationAuditAdvanced)
 const message = ref('')
+const selectedAuditId = ref<number | null>(null)
 
 const filter = ref({
   action: '',
   targetType: '',
+  targetId: '',
   operatorId: '',
+  requestIp: '',
   startTime: '',
   endTime: '',
+  resultStatus: 'ALL',
   limit: 100
 })
 
@@ -43,17 +54,33 @@ const statsCards = computed(() => {
     { label: 'PLAYBACK', value: s.playbackActionCount || 0 },
     { label: 'CLEANUP', value: s.cleanupActionCount || 0 },
     { label: 'HLS REPAIR', value: s.hlsRepairActionCount || 0 },
-    { label: 'STORAGE', value: s.storageActionCount || 0 }
+    { label: 'STORAGE', value: s.storageActionCount || 0 },
+    { label: 'REJECTED', value: s.rejectedActionCount || 0, level: 'danger' },
+    { label: 'DANGER', value: s.dangerActionCount || 0, level: 'warning' },
+    { label: 'SUCCESS', value: s.successActionCount || 0, level: 'success' }
   ]
 })
+
+function applyRouteQuery() {
+  const q = route.query
+  filter.value.action = typeof q.action === 'string' ? q.action : ''
+  filter.value.targetType = typeof q.targetType === 'string' ? q.targetType : ''
+  filter.value.targetId = typeof q.targetId === 'string' ? q.targetId : ''
+  filter.value.operatorId = typeof q.operatorId === 'string' ? q.operatorId : ''
+  filter.value.requestIp = typeof q.requestIp === 'string' ? q.requestIp : ''
+  filter.value.resultStatus = typeof q.resultStatus === 'string' && q.resultStatus ? q.resultStatus : 'ALL'
+}
 
 function queryParams() {
   return {
     action: filter.value.action || undefined,
     targetType: filter.value.targetType || undefined,
+    targetId: filter.value.targetId || undefined,
     operatorId: filter.value.operatorId ? Number(filter.value.operatorId) : undefined,
+    requestIp: filter.value.requestIp || undefined,
     startTime: filter.value.startTime || undefined,
     endTime: filter.value.endTime || undefined,
+    resultStatus: filter.value.resultStatus && filter.value.resultStatus !== 'ALL' ? filter.value.resultStatus : undefined,
     limit: Number(filter.value.limit) || 100
   }
 }
@@ -74,9 +101,12 @@ function resetFilter() {
   filter.value = {
     action: '',
     targetType: '',
+    targetId: '',
     operatorId: '',
+    requestIp: '',
     startTime: '',
     endTime: '',
+    resultStatus: 'ALL',
     limit: 100
   }
   search()
@@ -110,12 +140,45 @@ async function recordTest() {
   }
 }
 
+function isRejected(item: any) {
+  const action = item?.action || ''
+  const detail = parseDetail(item)
+  return action.endsWith('_REJECTED') || detail.rejected === true
+}
+
+function isDangerAction(action: string) {
+  return ['RERUN', 'RESET', 'CANCEL', 'FAIL', 'SYNC', 'CLEANUP', 'REPAIR']
+    .some((key) => action.includes(key))
+}
+
+function auditStatus(item: any) {
+  const action = item?.action || ''
+  if (isRejected(item)) return 'REJECTED'
+  if (action.includes('FAILED') || action.includes('FAIL')) return 'FAILED'
+  if (isDangerAction(action)) return 'DANGER'
+  if (action.includes('SUCCESS')) return 'SUCCESS'
+  return 'NORMAL'
+}
+
 function actionClass(action: string) {
   if (!action) return 'action'
-  if (action.includes('FAILED') || action.includes('CANCEL') || action.includes('CLEANUP')) return 'action danger'
-  if (action.includes('RERUN') || action.includes('SYNC') || action.includes('REPAIR')) return 'action warning'
+  if (action.endsWith('_REJECTED')) return 'action danger'
+  if (action.includes('FAILED') || action.includes('FAIL') || action.includes('CANCEL') || action.includes('CLEANUP')) return 'action danger'
+  if (action.includes('RERUN') || action.includes('RESET') || action.includes('SYNC') || action.includes('REPAIR')) return 'action warning'
   if (action.includes('SUCCESS')) return 'action success'
   return 'action info'
+}
+
+function statusClass(item: any) {
+  const status = auditStatus(item)
+  if (status === 'REJECTED' || status === 'FAILED') return 'status danger'
+  if (status === 'DANGER') return 'status warning'
+  if (status === 'SUCCESS') return 'status success'
+  return 'status info'
+}
+
+function rowClass(item: any) {
+  return isRejected(item) ? 'rejected-row' : ''
 }
 
 function parseDetail(item: any) {
@@ -139,7 +202,18 @@ function reasonOf(item: any) {
   return '-'
 }
 
-onMounted(loadAll)
+watch(
+  () => route.query,
+  () => {
+    applyRouteQuery()
+    search()
+  }
+)
+
+onMounted(() => {
+  applyRouteQuery()
+  loadAll()
+})
 </script>
 
 <template>
@@ -162,12 +236,17 @@ onMounted(loadAll)
       @clear-error="statsRequest.error.value = null"
     >
       <div class="stats">
-        <div v-for="item in statsCards" :key="item.label">
+        <div v-for="item in statsCards" :key="item.label" :class="item.level ? `stat ${item.level}` : 'stat'">
           <small>{{ item.label }}</small>
           <strong>{{ item.value }}</strong>
         </div>
       </div>
     </ApiState>
+
+    <OperationAuditAlertPanel :hours="24" :limit="8" />
+    <OperationAuditAlertEventInbox :hours="24" :limit="12" />
+
+    <OperationAuditRiskPanel :hours="24" :limit="8" />
 
     <div class="panel">
       <h3>筛选</h3>
@@ -179,14 +258,23 @@ onMounted(loadAll)
           </option>
         </select>
         <input v-model="filter.targetType" class="input" placeholder="targetType，例如 TRANSCODE_TASK" />
+        <input v-model="filter.targetId" class="input" placeholder="targetId，例如 videoId / taskId" />
         <input v-model="filter.operatorId" class="input" placeholder="operatorId" />
+        <input v-model="filter.requestIp" class="input" placeholder="requestIp，例如 127.0.0.1" />
         <input v-model="filter.startTime" class="input" type="datetime-local" />
         <input v-model="filter.endTime" class="input" type="datetime-local" />
+        <select v-model="filter.resultStatus" class="input">
+          <option value="ALL">全部状态</option>
+          <option value="REJECTED">只看被拒绝</option>
+          <option value="DANGER">只看高危</option>
+          <option value="SUCCESS">只看成功/已通过</option>
+        </select>
         <input v-model="filter.limit" class="input" type="number" min="1" max="5000" />
       </div>
 
       <div class="actions">
         <button class="button" @click="search">查询</button>
+        <button class="button danger-button" @click="filter.resultStatus = 'REJECTED'; search()">只看被拒绝</button>
         <button class="button secondary" @click="resetFilter">重置</button>
         <button class="button secondary" @click="exportCsv">导出 CSV</button>
       </div>
@@ -223,31 +311,36 @@ onMounted(loadAll)
                 <th>action</th>
                 <th>target</th>
                 <th>operator</th>
+                <th>status</th>
                 <th>reason</th>
                 <th>description</th>
                 <th>ip</th>
                 <th>createdAt</th>
                 <th>detail</th>
+                <th>操作</th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="item in listRequest.data.value" :key="item.id">
+              <tr v-for="item in listRequest.data.value" :key="item.id" :class="rowClass(item)">
                 <td>{{ item.id }}</td>
                 <td><span :class="actionClass(item.action)">{{ item.action }}</span></td>
                 <td>{{ item.targetType || '-' }} / {{ item.targetId || '-' }}</td>
                 <td>{{ item.operatorName || '-' }} / {{ item.operatorId || '-' }}</td>
+                <td><span :class="statusClass(item)">{{ auditStatus(item) }}</span></td>
                 <td class="path reason">{{ reasonOf(item) }}</td>
                 <td class="path">{{ item.description || '-' }}</td>
                 <td>{{ item.requestIp || '-' }}</td>
                 <td>{{ item.createdAt }}</td>
                 <td class="path">{{ item.detailJson || '-' }}</td>
+                <td><button class="mini-button" @click="selectedAuditId = item.id">证据</button></td>
               </tr>
             </tbody>
           </table>
         </div>
       </ApiState>
     </div>
-  </section>
+    <OperationAuditEvidenceDrawer :audit-id="selectedAuditId" @close="selectedAuditId = null" />
+</section>
 </template>
 
 <style scoped>
@@ -269,11 +362,26 @@ onMounted(loadAll)
   margin-top: 18px;
 }
 
-.stats > div {
+.stat {
   border: 1px solid #e5e7eb;
   border-radius: 16px;
   padding: 14px;
   background: #fff;
+}
+
+.stat.danger {
+  border-color: #fecaca;
+  background: #fef2f2;
+}
+
+.stat.warning {
+  border-color: #fde68a;
+  background: #fffbeb;
+}
+
+.stat.success {
+  border-color: #bbf7d0;
+  background: #f0fdf4;
 }
 
 .stats small {
@@ -321,6 +429,10 @@ onMounted(loadAll)
   background: #374151;
 }
 
+.danger-button {
+  background: #991b1b;
+}
+
 table {
   width: 100%;
   border-collapse: collapse;
@@ -343,6 +455,38 @@ th, td {
 .reason {
   color: #92400e;
   font-weight: 600;
+}
+
+.rejected-row {
+  background: #fff1f2;
+}
+
+.status {
+  display: inline-block;
+  padding: 3px 9px;
+  border-radius: 999px;
+  font-size: 12px;
+  font-weight: 700;
+}
+
+.status.info {
+  background: #e5e7eb;
+  color: #374151;
+}
+
+.status.success {
+  background: #dcfce7;
+  color: #166534;
+}
+
+.status.warning {
+  background: #fef3c7;
+  color: #92400e;
+}
+
+.status.danger {
+  background: #fee2e2;
+  color: #991b1b;
 }
 
 .action {
@@ -370,5 +514,19 @@ th, td {
 .action.danger {
   background: #fee2e2;
   color: #991b1b;
+}
+
+.mini-button {
+  border: 1px solid #d1d5db;
+  background: #fff;
+  border-radius: 8px;
+  padding: 5px 9px;
+  cursor: pointer;
+  white-space: nowrap;
+}
+
+.mini-button:hover {
+  border-color: #93c5fd;
+  color: #1d4ed8;
 }
 </style>

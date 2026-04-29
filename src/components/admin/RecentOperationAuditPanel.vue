@@ -12,12 +12,23 @@ const props = withDefaults(defineProps<{
 
 const request = useApiRequest(() => getRecentOperationAudit(props.limit))
 
+function isRejected(item: any) {
+  const action = item?.action || ''
+  const detail = parseDetail(item)
+  return action.endsWith('_REJECTED') || detail.rejected === true
+}
+
 function actionClass(action: string) {
   if (!action) return 'action'
-  if (action.includes('FAILED') || action.includes('CANCEL') || action.includes('CLEANUP')) return 'action danger'
-  if (action.includes('RERUN') || action.includes('SYNC') || action.includes('REPAIR')) return 'action warning'
+  if (action.endsWith('_REJECTED')) return 'action danger'
+  if (action.includes('FAILED') || action.includes('FAIL') || action.includes('CANCEL') || action.includes('CLEANUP')) return 'action danger'
+  if (action.includes('RERUN') || action.includes('RESET') || action.includes('SYNC') || action.includes('REPAIR')) return 'action warning'
   if (action.includes('SUCCESS')) return 'action success'
   return 'action info'
+}
+
+function itemClass(item: any) {
+  return isRejected(item) ? 'audit-item rejected' : 'audit-item'
 }
 
 function parseDetail(item: any) {
@@ -69,9 +80,10 @@ defineExpose({
       @clear-error="request.error.value = null"
     >
       <div class="audit-list">
-        <div v-for="item in request.data.value" :key="item.id" class="audit-item">
+        <div v-for="item in request.data.value" :key="item.id" :class="itemClass(item)">
           <div>
             <span :class="actionClass(item.action)">{{ item.action }}</span>
+            <span v-if="isRejected(item)" class="rejected-badge">已拒绝</span>
             <strong>{{ item.targetType || '-' }} / {{ item.targetId || '-' }}</strong>
             <p>{{ item.description || '-' }}</p>
             <p v-if="reasonOf(item)" class="reason">reason：{{ reasonOf(item) }}</p>
@@ -126,6 +138,22 @@ defineExpose({
   border-radius: 14px;
   padding: 12px;
   background: #f9fafb;
+}
+
+.audit-item.rejected {
+  border-color: #fecaca;
+  background: #fff1f2;
+}
+
+.rejected-badge {
+  display: inline-block;
+  margin-left: 8px;
+  padding: 3px 9px;
+  border-radius: 999px;
+  background: #fee2e2;
+  color: #991b1b;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .audit-item strong,
