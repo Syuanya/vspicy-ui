@@ -25,15 +25,9 @@ a {
   gap: 16px;
 }
 
-.main {
-  max-width: 1120px;
-  margin: 24px auto;
-  padding: 0 16px;
-}
-
 .card {
   background: white;
-  border-radius: 16px;
+  border-radius: 8px;
   padding: 24px;
   box-shadow: 0 12px 30px rgba(15, 23, 42, 0.08);
 }
@@ -44,14 +38,14 @@ a {
   padding: 0 12px;
   margin: 8px 0 16px;
   border: 1px solid #d1d5db;
-  border-radius: 10px;
+  border-radius: 8px;
 }
 
 .button {
   height: 40px;
   padding: 0 18px;
   border: 0;
-  border-radius: 10px;
+  border-radius: 8px;
   background: #ef4444;
   color: white;
   cursor: pointer;

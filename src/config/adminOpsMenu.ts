@@ -19,6 +19,38 @@ export const adminOpsMenuItems: AdminOpsMenuItem[] = [
     group: 'overview'
   },
   {
+    title: '用户管理',
+    description: '查询用户资料、用户类型、账号状态，并联动查看 RBAC 权限视图。',
+    path: '/admin/users',
+    permission: 'user:view',
+    level: 'info',
+    group: 'admin'
+  },
+  {
+    title: '内容管理',
+    description: '聚合文章和视频内容，作为审核、推荐、搜索和运营治理的统一入口。',
+    path: '/admin/content',
+    permission: 'content:manage',
+    level: 'info',
+    group: 'admin'
+  },
+  {
+    title: '会员管理',
+    description: '查看套餐、用户权益、高清播放和上传容量校验。',
+    path: '/admin/members',
+    permission: 'member:manage',
+    level: 'success',
+    group: 'admin'
+  },
+  {
+    title: '通知事件',
+    description: '查看异步通知事件日志，并对失败事件进行人工重试。',
+    path: '/admin/notification-events',
+    permission: 'notification:event:view',
+    level: 'warning',
+    group: 'admin'
+  },
+  {
     title: '服务健康',
     description: '检查 MySQL、Redis、MinIO、RocketMQ、FFmpeg 和存储目录。',
     path: '/admin/service-health',
@@ -36,15 +68,15 @@ export const adminOpsMenuItems: AdminOpsMenuItem[] = [
   },
   {
     title: '转码任务',
-    description: '转码状态机、分发、重试、重跑、本地执行。',
+    description: '转码状态机、分发、重试、重跑和本地执行。',
     path: '/admin/transcode-tasks',
-    permission: 'video:transcode:state:view',
+    permission: 'video:transcode:view',
     level: 'warning',
     group: 'transcode'
   },
   {
-    title: '播放就绪批量自愈',
-    description: '批量修复 HLS 已生成但 video 状态/播放地址未同步的问题。',
+    title: '播放就绪',
+    description: '批量修复 HLS 已生成但视频播放地址未同步的问题。',
     path: '/admin/playback-readiness-batch',
     permission: 'video:playback:readiness:view',
     level: 'danger',
@@ -52,7 +84,7 @@ export const adminOpsMenuItems: AdminOpsMenuItem[] = [
   },
   {
     title: 'HLS 修复',
-    description: 'HLS 缺片、manifest 异常、修复执行与复检。',
+    description: '处理 HLS 缺片、manifest 异常、修复执行与复检。',
     path: '/admin/hls-repair',
     permission: 'video:hls:repair:view',
     level: 'warning',

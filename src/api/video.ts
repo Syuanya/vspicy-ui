@@ -35,6 +35,18 @@ export function getVideo(videoId: number) {
   return http.get(`/videos/${videoId}`)
 }
 
+export function listVideos(params?: {
+  status?: string
+  userId?: number
+  limit?: number
+}) {
+  return http.get('/videos', { params })
+}
+
+export function updateVideoStatus(videoId: number, status: string) {
+  return http.put(`/videos/${videoId}/status`, { status })
+}
+
 export function getVideoFiles(videoId: number) {
   return http.get(`/videos/${videoId}/files`)
 }

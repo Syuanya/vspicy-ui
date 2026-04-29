@@ -10,7 +10,6 @@ const props = withDefaults(defineProps<{
   retryText?: string
 }>(), {
   loading: false,
-  error: null,
   empty: false,
   loadingText: '加载中...',
   emptyText: '暂无数据',

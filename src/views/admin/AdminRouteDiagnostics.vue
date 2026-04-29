@@ -7,6 +7,10 @@ const router = useRouter()
 
 const routes = [
   '/admin/ops-hub',
+  '/admin/users',
+  '/admin/content',
+  '/admin/members',
+  '/admin/notification-events',
   '/admin/service-health',
   '/admin/api-diagnostics',
   '/admin/transcode-tasks',
@@ -20,7 +24,8 @@ const registeredAdminRoutes = computed(() => {
     .filter((r) => r.path.startsWith('/admin'))
     .map((r) => ({
       path: r.path,
-      name: String(r.name || '-')
+      name: String(r.name || '-'),
+      permissionCode: String(r.meta.permissionCode || r.meta.permission || '-')
     }))
     .sort((a, b) => a.path.localeCompare(b.path))
 })
@@ -33,7 +38,7 @@ function go(path: string) {
 <template>
   <section class="card">
     <h2>后台路由诊断</h2>
-    <p>如果你能看到这个页面，说明 adminOpsRoutes 已经接入主 router。</p>
+    <p>检查管理员系统路由是否已注册，并快速跳转到核心管理页面。</p>
 
     <div class="panel">
       <h3>当前路由</h3>
@@ -42,7 +47,7 @@ function go(path: string) {
     </div>
 
     <div class="panel">
-      <h3>运维页面快捷测试</h3>
+      <h3>管理员页面快捷测试</h3>
       <div class="grid">
         <button
           v-for="path in routes"
@@ -53,7 +58,6 @@ function go(path: string) {
           {{ path }}
         </button>
       </div>
-      <p class="warn">注意：/admin/api-diagnosticscc 是错误路径，正确是 /admin/api-diagnostics。</p>
     </div>
 
     <div class="panel">
@@ -64,12 +68,14 @@ function go(path: string) {
             <tr>
               <th>path</th>
               <th>name</th>
+              <th>permission</th>
             </tr>
           </thead>
           <tbody>
             <tr v-for="item in registeredAdminRoutes" :key="item.path + item.name">
               <td>{{ item.path }}</td>
               <td>{{ item.name }}</td>
+              <td>{{ item.permissionCode }}</td>
             </tr>
           </tbody>
         </table>
@@ -81,7 +87,7 @@ function go(path: string) {
 <style scoped>
 .panel {
   border: 1px solid #e5e7eb;
-  border-radius: 18px;
+  border-radius: 10px;
   padding: 18px;
   background: #fff;
   margin-top: 18px;
@@ -97,15 +103,10 @@ function go(path: string) {
   border: 1px solid #dbeafe;
   background: #eff6ff;
   color: #1d4ed8;
-  border-radius: 14px;
+  border-radius: 10px;
   padding: 12px;
   text-align: left;
   cursor: pointer;
-}
-
-.warn {
-  margin-top: 12px;
-  color: #92400e;
 }
 
 table {
@@ -113,7 +114,8 @@ table {
   border-collapse: collapse;
 }
 
-th, td {
+th,
+td {
   border-bottom: 1px solid #e5e7eb;
   padding: 9px;
   text-align: left;

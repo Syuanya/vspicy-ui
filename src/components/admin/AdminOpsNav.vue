@@ -62,7 +62,7 @@ function itemClass(level: string, path: string) {
   align-items: stretch;
   border: 1px solid #e5e7eb;
   background: #fff;
-  border-radius: 18px;
+  border-radius: 8px;
   padding: 12px;
   margin-bottom: 18px;
 }
@@ -78,7 +78,7 @@ function itemClass(level: string, path: string) {
 .ops-nav-item {
   border: 1px solid #e5e7eb;
   background: #fff;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 10px 12px;
   text-align: left;
   cursor: pointer;

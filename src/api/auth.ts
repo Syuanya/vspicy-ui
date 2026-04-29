@@ -7,8 +7,27 @@ export function login(data: {
   return http.post('/auth/login', data)
 }
 
+export function register(data: {
+  username: string
+  password: string
+  nickname?: string
+  email?: string
+  phone?: string
+}) {
+  return http.post('/auth/register', data)
+}
+
 export function me() {
   return http.get('/auth/me')
+}
+
+export function updateProfile(data: {
+  nickname?: string
+  avatarUrl?: string
+  email?: string
+  phone?: string
+}) {
+  return http.put('/auth/profile', data)
 }
 
 export function devToken() {
@@ -28,5 +47,6 @@ export function saveLoginResult(data: any) {
 
 export function logout() {
   clearTokens()
+  localStorage.removeItem('vspicy_user_id')
   localStorage.removeItem('vspicy_permission_view')
 }
