@@ -54,7 +54,7 @@ async function loadUnreadCount() {
   try {
     const res: any = await unreadNotificationCount()
     if (res.code === 0) {
-      unreadCount.value = res.data.unreadCount || 0
+      unreadCount.value = res.data?.unreadCount || 0
     }
   } catch {
     unreadCount.value = 0

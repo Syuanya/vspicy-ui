@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { NormalizedApiError, normalizeApiError } from '../../api/apiError'
+import type { NormalizedApiError } from '../../api/apiError'
+import { normalizeApiError } from '../../api/apiError'
 
 const props = defineProps<{
   error?: NormalizedApiError | string | unknown | null
@@ -22,13 +23,14 @@ const titleText = computed(() => {
   if (normalized.value?.type === 'UNAUTHORIZED') return '登录状态异常'
   if (normalized.value?.type === 'FORBIDDEN') return '权限不足'
   if (normalized.value?.type === 'NETWORK') return '网络异常'
+  if (normalized.value?.type === 'TIMEOUT') return '请求超时'
   return '请求异常'
 })
 
 function typeClass(type?: string) {
-  if (type === 'VALIDATION') return 'banner warning'
-  if (type === 'UNAUTHORIZED' || type === 'FORBIDDEN') return 'banner warning'
-  if (type === 'NETWORK' || type === 'TIMEOUT') return 'banner warning'
+  if (type === 'VALIDATION' || type === 'UNAUTHORIZED' || type === 'FORBIDDEN' || type === 'NETWORK' || type === 'TIMEOUT') {
+    return 'banner warning'
+  }
   return 'banner danger'
 }
 </script>
@@ -40,7 +42,6 @@ function typeClass(type?: string) {
       <p>{{ normalized.message }}</p>
       <small v-if="normalized.status">HTTP {{ normalized.status }}</small>
       <small v-if="normalized.code !== undefined && normalized.code !== null">CODE {{ normalized.code }}</small>
-      <small v-if="normalized.type">TYPE {{ normalized.type }}</small>
       <small v-if="normalized.detail">{{ normalized.detail }}</small>
     </div>
     <button type="button" @click="emit('close')">关闭</button>
@@ -52,7 +53,7 @@ function typeClass(type?: string) {
   display: flex;
   justify-content: space-between;
   gap: 12px;
-  border-radius: 14px;
+  border-radius: 8px;
   padding: 12px 14px;
   margin: 12px 0;
   border: 1px solid;
@@ -73,7 +74,7 @@ function typeClass(type?: string) {
 }
 
 .banner button {
-  border: none;
+  border: 0;
   background: transparent;
   cursor: pointer;
   color: inherit;

@@ -23,17 +23,17 @@ export interface ApiResponseLike<T = any> {
   success?: boolean
   data?: T
   result?: T
+  error?: string
+  detail?: string
 }
 
 export function isSuccessResponse(response: ApiResponseLike | any): boolean {
   if (!response || typeof response !== 'object') {
     return false
   }
-
   if (response.success === true) {
     return true
   }
-
   return response.code === 0 || response.code === 200 || response.code === '0' || response.code === '200'
 }
 
@@ -41,8 +41,7 @@ export function getResponseMessage(response: ApiResponseLike | any, fallback = '
   if (!response || typeof response !== 'object') {
     return fallback
   }
-
-  return response.message || response.msg || response.error || fallback
+  return response.message || response.msg || response.error || response.detail || fallback
 }
 
 export function unwrapApiResponse<T = any>(response: ApiResponseLike<T> | any): T {
@@ -51,7 +50,6 @@ export function unwrapApiResponse<T = any>(response: ApiResponseLike<T> | any): 
     if ('result' in response) return response.result as T
     return response as T
   }
-
   throw normalizeApiError(response, '业务请求失败')
 }
 
@@ -61,11 +59,7 @@ export function normalizeApiError(error: unknown, fallback = '请求失败'): No
   }
 
   if (typeof error === 'string') {
-    return {
-      message: error || fallback,
-      type: 'UNKNOWN',
-      raw: error
-    }
+    return { message: error || fallback, type: 'UNKNOWN', raw: error }
   }
 
   const anyError = error as any
@@ -77,74 +71,27 @@ export function normalizeApiError(error: unknown, fallback = '请求失败'): No
     const statusText = anyError.response.statusText
 
     if (status === 400) {
-      return {
-        status,
-        code: body?.code,
-        message: bodyMessage || '参数校验失败，请检查输入',
-        detail: statusText,
-        type: 'VALIDATION',
-        raw: error
-      }
+      return { status, code: body?.code, message: bodyMessage || '参数校验失败，请检查输入', detail: statusText, type: 'VALIDATION', raw: error }
     }
-
     if (status === 401) {
-      return {
-        status,
-        code: body?.code,
-        message: bodyMessage || '登录已过期，请重新登录',
-        detail: statusText,
-        type: 'UNAUTHORIZED',
-        raw: error
-      }
+      return { status, code: body?.code, message: bodyMessage || '登录已过期，请重新登录', detail: statusText, type: 'UNAUTHORIZED', raw: error }
     }
-
     if (status === 403) {
-      return {
-        status,
-        code: body?.code,
-        message: bodyMessage || '没有权限执行该操作',
-        detail: statusText,
-        type: 'FORBIDDEN',
-        raw: error
-      }
+      return { status, code: body?.code, message: bodyMessage || '没有权限执行该操作', detail: statusText, type: 'FORBIDDEN', raw: error }
     }
-
     if (status === 404) {
-      return {
-        status,
-        code: body?.code,
-        message: bodyMessage || '接口不存在或资源不存在',
-        detail: statusText,
-        type: 'NOT_FOUND',
-        raw: error
-      }
+      return { status, code: body?.code, message: bodyMessage || '接口不存在或资源不存在', detail: statusText, type: 'NOT_FOUND', raw: error }
     }
-
     if (status >= 500) {
-      return {
-        status,
-        code: body?.code,
-        message: bodyMessage || '服务端异常，请查看后端日志',
-        detail: statusText,
-        type: 'HTTP',
-        raw: error
-      }
+      return { status, code: body?.code, message: bodyMessage || '服务端异常，请查看后端日志', detail: statusText, type: 'HTTP', raw: error }
     }
-
-    return {
-      status,
-      code: body?.code,
-      message: bodyMessage || statusText || fallback,
-      detail: statusText,
-      type: 'HTTP',
-      raw: error
-    }
+    return { status, code: body?.code, message: bodyMessage || statusText || fallback, detail: statusText, type: 'HTTP', raw: error }
   }
 
   if (anyError?.code === 'ECONNABORTED' || String(anyError?.message || '').toLowerCase().includes('timeout')) {
     return {
       code: anyError.code,
-      message: '请求超时，请检查服务是否正常',
+      message: '请求超时，请检查后端服务是否正常',
       detail: anyError.message,
       type: 'TIMEOUT',
       raw: error
@@ -163,30 +110,21 @@ export function normalizeApiError(error: unknown, fallback = '请求失败'): No
   if (anyError && typeof anyError === 'object') {
     if ('code' in anyError || 'message' in anyError || 'msg' in anyError) {
       const code = anyError.code
-      const type = code === 400 || code === '400' ? 'VALIDATION' : 'BUSINESS'
       return {
         code,
         message: getResponseMessage(anyError, fallback),
         detail: anyError.detail,
-        type,
+        type: code === 400 || code === '400' ? 'VALIDATION' : 'BUSINESS',
         raw: error
       }
     }
   }
 
   if (anyError?.message) {
-    return {
-      message: anyError.message,
-      type: 'UNKNOWN',
-      raw: error
-    }
+    return { message: anyError.message, type: 'UNKNOWN', raw: error }
   }
 
-  return {
-    message: fallback,
-    type: 'UNKNOWN',
-    raw: error
-  }
+  return { message: fallback, type: 'UNKNOWN', raw: error }
 }
 
 export function isNormalizedApiError(error: unknown): error is NormalizedApiError {
