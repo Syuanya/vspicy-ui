@@ -1,4 +1,4 @@
-import { clearTokens, http, saveTokens } from './http'
+import { clearTokens, http, saveTokens, USER_ID_KEY } from './http'
 
 export function login(data: {
   username: string
@@ -36,7 +36,7 @@ export function devToken() {
 
 export function saveLoginResult(data: any) {
   saveTokens(data.accessToken, data.refreshToken)
-  localStorage.setItem('vspicy_user_id', String(data.user.userId))
+  localStorage.setItem(USER_ID_KEY, String(data.user.userId))
   localStorage.setItem('vspicy_permission_view', JSON.stringify({
     userId: data.user.userId,
     roles: (data.user.roles || []).map((roleCode: string) => ({ roleCode, roleName: roleCode })),
@@ -47,6 +47,6 @@ export function saveLoginResult(data: any) {
 
 export function logout() {
   clearTokens()
-  localStorage.removeItem('vspicy_user_id')
+  localStorage.removeItem(USER_ID_KEY)
   localStorage.removeItem('vspicy_permission_view')
 }

@@ -2,6 +2,7 @@ import axios from 'axios'
 
 export const ACCESS_TOKEN_KEY = 'vspicy_access_token'
 export const REFRESH_TOKEN_KEY = 'vspicy_refresh_token'
+export const USER_ID_KEY = 'vspicy_user_id'
 
 export const http = axios.create({
   baseURL: '/api',
@@ -13,6 +14,12 @@ http.interceptors.request.use((config) => {
   if (token) {
     config.headers.Authorization = `Bearer ${token}`
   }
+
+  const userId = localStorage.getItem(USER_ID_KEY)
+  if (userId) {
+    config.headers['X-User-Id'] = userId
+  }
+
   return config
 })
 
@@ -32,6 +39,11 @@ http.interceptors.response.use(
 
 export function getAccessToken() {
   return localStorage.getItem(ACCESS_TOKEN_KEY)
+}
+
+export function getCurrentUserId() {
+  const value = localStorage.getItem(USER_ID_KEY)
+  return value ? Number(value) : undefined
 }
 
 export function saveTokens(accessToken: string, refreshToken: string) {
