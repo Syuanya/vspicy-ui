@@ -40,7 +40,7 @@ async function load() {
       getMyMembership(userId.value),
       listArticles({ userId: userId.value, limit: 8 }),
       listVideos({ userId: userId.value, limit: 8 }),
-      unreadNotificationCount(userId.value)
+      unreadNotificationCount()
     ])
     if (meRes.code === 0) {
       user.value = meRes.data

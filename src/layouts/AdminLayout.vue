@@ -1,99 +1,86 @@
 <script setup lang="ts">
 import { computed, onMounted, ref } from 'vue'
 import { useRoute } from 'vue-router'
-import { loadPermissionView } from '../utils/permission'
+import { adminOpsMenuItems, type AdminOpsMenuItem } from '../config/adminOpsMenu'
+import { hasPermission, loadPermissionView, type PermissionView } from '../utils/permission'
 
-type AdminLink = {
-  path: string
+type AdminGroupView = {
+  code: string
   name: string
-  permissionCode?: string
-}
-
-type AdminGroup = {
-  name: string
-  links: AdminLink[]
+  description: string
+  links: AdminOpsMenuItem[]
 }
 
 const route = useRoute()
-const permissionView = ref<any>(null)
+const permissionView = ref<PermissionView | null>(null)
 const sidebarOpen = ref(false)
+const keyword = ref('')
 
-const adminGroups: AdminGroup[] = [
-  {
-    name: '运营管理',
-    links: [
-      { path: '/admin/dashboard', name: '数据大屏', permissionCode: 'dashboard:view' },
-      { path: '/admin/users', name: '用户管理', permissionCode: 'user:view' },
-      { path: '/admin/content', name: '内容管理', permissionCode: 'content:manage' },
-      { path: '/admin/members', name: '会员管理', permissionCode: 'member:manage' },
-      { path: '/admin/notification-events', name: '通知事件', permissionCode: 'notification:event:view' }
-    ]
-  },
-  {
-    name: '审核与权限',
-    links: [
-      { path: '/admin/audit-tasks', name: '审核任务', permissionCode: 'content:audit:view' },
-      { path: '/admin/sensitive-words', name: '敏感词', permissionCode: 'content:sensitive:view' },
-      { path: '/admin/profiles', name: '用户画像', permissionCode: 'profile:view' },
-      { path: '/admin/permissions', name: '权限管理', permissionCode: 'permission:view' },
-      { path: '/admin/operation-logs', name: '审计日志', permissionCode: 'operation:log:view' }
-    ]
-  },
-  {
-    name: '视频运维',
-    links: [
-      { path: '/admin/ops-hub', name: '运维中心', permissionCode: 'video:ops:hub:view' },
-      { path: '/admin/service-health', name: '服务健康', permissionCode: 'video:service:health:view' },
-      { path: '/admin/api-diagnostics', name: 'API 诊断', permissionCode: 'video:ops:hub:view' },
-      { path: '/admin/transcode-tasks', name: '转码任务', permissionCode: 'video:transcode:view' },
-      { path: '/admin/playback-readiness-batch', name: '播放就绪', permissionCode: 'video:playback:readiness:view' },
-      { path: '/admin/operation-audit', name: '操作审计', permissionCode: 'video:operation:audit:view' },
-      { path: '/admin/route-diagnostics', name: '路由诊断' }
-    ]
-  },
-  {
-    name: '存储运维',
-    links: [
-      { path: '/admin/storage-ops', name: '运维总控', permissionCode: 'video:storage:ops:view' },
-      { path: '/admin/video-upload-quota', name: '上传配额', permissionCode: 'video:upload:quota:view' },
-      { path: '/admin/user-space', name: '用户空间', permissionCode: 'video:upload:space:view' },
-      { path: '/admin/storage-dashboard', name: '存储大屏', permissionCode: 'video:storage:dashboard:view' },
-      { path: '/admin/video-file-consistency', name: '文件一致性', permissionCode: 'video:file:consistency:view' },
-      { path: '/admin/hls-integrity', name: 'HLS 完整性', permissionCode: 'video:hls:integrity:view' },
-      { path: '/admin/storage-alerts', name: '存储告警', permissionCode: 'video:storage:alert:view' },
-      { path: '/admin/storage-alert-notifications', name: '告警通知', permissionCode: 'video:storage:alert:notification:view' },
-      { path: '/admin/hls-repair', name: 'HLS 修复', permissionCode: 'video:hls:repair:view' },
-      { path: '/admin/object-cleanup', name: '对象清理', permissionCode: 'video:object:cleanup:view' }
-    ]
-  }
-]
-
-const currentTitle = computed(() => {
-  for (const group of adminGroups) {
-    const link = group.links.find((item) => item.path === route.path)
-    if (link) return link.name
-  }
-  return '管理后台'
-})
-
-function canSee(link: AdminLink) {
-  if (!link.permissionCode) return true
-  if (!permissionView.value) return true
-
-  const roleCodes = (permissionView.value.roles || []).map((role: any) => role.roleCode)
-  if (roleCodes.includes('SUPER_ADMIN')) return true
-
-  const codes = permissionView.value.permissionCodes || []
-  return codes.includes(link.permissionCode)
+const groupMeta: Record<string, { name: string; description: string; order: number }> = {
+  overview: { name: '运维概览', description: '总览入口与核心工作台', order: 10 },
+  admin: { name: '运营管理', description: '用户、内容、通知、系统配置与字典', order: 20 },
+  health: { name: '服务健康', description: '基础设施、依赖组件与健康检查', order: 30 },
+  transcode: { name: '转码播放', description: '转码任务、播放就绪与媒体链路', order: 40 },
+  playback: { name: '播放治理', description: '播放地址、HLS 状态与就绪修复', order: 50 },
+  repair: { name: '修复任务', description: 'HLS 修复与一致性处理', order: 60 },
+  storage: { name: '存储运维', description: '对象存储、容量、文件一致性和告警', order: 70 },
+  cleanup: { name: '清理治理', description: '孤儿对象、清理审批与执行', order: 80 },
+  audit: { name: '审计治理', description: '操作审计、后台日志与权限追踪', order: 90 },
+  diagnostics: { name: '诊断工具', description: 'API、路由与前后端联调诊断', order: 100 }
 }
 
-const visibleAdminGroups = computed(() => adminGroups
-  .map((group) => ({ ...group, links: group.links.filter(canSee) }))
-  .filter((group) => group.links.length > 0)
-)
+function canSee(item: AdminOpsMenuItem) {
+  return hasPermission(item.permission, permissionView.value)
+}
+
+function matchesKeyword(item: AdminOpsMenuItem) {
+  const value = keyword.value.trim().toLowerCase()
+  if (!value) return true
+  return [item.title, item.description, item.path, item.permission, item.group]
+    .filter(Boolean)
+    .some((text) => String(text).toLowerCase().includes(value))
+}
+
+function isActive(path: string) {
+  return route.path === path || route.path.startsWith(`${path}/`)
+}
+
+const visibleAdminGroups = computed<AdminGroupView[]>(() => {
+  const bucket = new Map<string, AdminOpsMenuItem[]>()
+
+  adminOpsMenuItems
+    .filter(canSee)
+    .filter(matchesKeyword)
+    .forEach((item) => {
+      const group = item.group || 'admin'
+      const items = bucket.get(group) || []
+      items.push(item)
+      bucket.set(group, items)
+    })
+
+  return Array.from(bucket.entries())
+    .map(([code, links]) => ({
+      code,
+      links,
+      name: groupMeta[code]?.name || code,
+      description: groupMeta[code]?.description || '后台功能入口'
+    }))
+    .sort((a, b) => (groupMeta[a.code]?.order || 999) - (groupMeta[b.code]?.order || 999))
+})
+
+const visibleMenuCount = computed(() => visibleAdminGroups.value.reduce((sum, group) => sum + group.links.length, 0))
+
+const currentMenu = computed(() => adminOpsMenuItems.find((item) => isActive(item.path)))
+
+const currentTitle = computed(() => currentMenu.value?.title || '管理后台')
+const currentDescription = computed(() => currentMenu.value?.description || '后台功能与运维工作台')
 
 function closeSidebar() {
   sidebarOpen.value = false
+}
+
+function clearKeyword() {
+  keyword.value = ''
 }
 
 onMounted(async () => {
@@ -116,12 +103,40 @@ onMounted(async () => {
 
       <RouterLink class="back-user" to="/" @click="closeSidebar">返回用户端</RouterLink>
 
-      <section v-for="group in visibleAdminGroups" :key="group.name" class="admin-group">
-        <h3>{{ group.name }}</h3>
-        <RouterLink v-for="link in group.links" :key="link.path" :to="link.path" @click="closeSidebar">
-          {{ link.name }}
+      <div class="nav-search">
+        <input v-model="keyword" type="search" placeholder="搜索菜单 / 权限码" />
+        <button v-if="keyword" type="button" @click="clearKeyword">清空</button>
+      </div>
+
+      <div class="nav-summary">
+        <span>可见菜单</span>
+        <strong>{{ visibleMenuCount }}</strong>
+      </div>
+
+      <section v-for="group in visibleAdminGroups" :key="group.code" class="admin-group">
+        <header>
+          <div>
+            <h3>{{ group.name }}</h3>
+            <p>{{ group.description }}</p>
+          </div>
+          <span>{{ group.links.length }}</span>
+        </header>
+
+        <RouterLink
+          v-for="link in group.links"
+          :key="link.path"
+          :to="link.path"
+          :class="['admin-link', `level-${link.level}`, { active: isActive(link.path) }]"
+          @click="closeSidebar"
+        >
+          <span class="link-title">{{ link.title }}</span>
+          <small>{{ link.description }}</small>
         </RouterLink>
       </section>
+
+      <div v-if="visibleMenuCount === 0" class="empty-menu">
+        没有匹配的菜单。请清空搜索条件，或确认当前账号权限。
+      </div>
     </aside>
 
     <div v-if="sidebarOpen" class="sidebar-mask" @click="closeSidebar"></div>
@@ -129,9 +144,9 @@ onMounted(async () => {
     <section class="admin-workspace">
       <header class="admin-topbar">
         <button class="sidebar-toggle" type="button" @click="sidebarOpen = !sidebarOpen">菜单</button>
-        <div>
+        <div class="topbar-title">
           <strong>{{ currentTitle }}</strong>
-          <small>后台功能与运维工作台</small>
+          <small>{{ currentDescription }}</small>
         </div>
         <RouterLink class="user-link" to="/">用户端</RouterLink>
       </header>
@@ -147,7 +162,7 @@ onMounted(async () => {
 .admin-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 248px 1fr;
+  grid-template-columns: 280px 1fr;
   background: #f3f4f6;
 }
 
@@ -171,6 +186,7 @@ onMounted(async () => {
   gap: 10px;
   align-items: center;
   color: #fff;
+  text-decoration: none;
 }
 
 .brand-mark {
@@ -201,30 +217,148 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 8px 10px;
   color: #bfdbfe;
+  text-decoration: none;
+}
+
+.nav-search {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  gap: 6px;
+  margin: 12px 6px 8px;
+}
+
+.nav-search input {
+  min-width: 0;
+  border: 1px solid rgba(148, 163, 184, 0.36);
+  border-radius: 8px;
+  background: rgba(15, 23, 42, 0.65);
+  color: #e5e7eb;
+  padding: 8px 10px;
+  outline: none;
+}
+
+.nav-search input::placeholder {
+  color: #94a3b8;
+}
+
+.nav-search button {
+  border: 0;
+  border-radius: 8px;
+  background: #334155;
+  color: #e5e7eb;
+  padding: 0 9px;
+  cursor: pointer;
+}
+
+.nav-summary {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin: 10px 6px 4px;
+  border-radius: 8px;
+  background: rgba(30, 41, 59, 0.85);
+  padding: 8px 10px;
+  color: #cbd5e1;
+  font-size: 12px;
+}
+
+.nav-summary strong {
+  color: #ffffff;
 }
 
 .admin-group {
   display: grid;
-  gap: 4px;
+  gap: 5px;
   margin-top: 16px;
 }
 
+.admin-group header {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 0 8px 4px;
+}
+
 .admin-group h3 {
-  margin: 0 8px 5px;
-  color: #94a3b8;
+  margin: 0;
+  color: #cbd5e1;
   font-size: 12px;
 }
 
-.admin-group a {
+.admin-group p {
+  margin: 2px 0 0;
+  color: #64748b;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.admin-group header span {
+  align-self: flex-start;
+  border-radius: 999px;
+  background: rgba(148, 163, 184, 0.14);
+  color: #94a3b8;
+  padding: 1px 7px;
+  font-size: 11px;
+}
+
+.admin-link {
+  display: grid;
+  gap: 2px;
+  border-left: 3px solid transparent;
   border-radius: 8px;
   padding: 8px 10px;
   color: #d1d5db;
+  text-decoration: none;
 }
 
-.admin-group a:hover,
-.admin-group a.router-link-active {
+.admin-link small {
+  color: #94a3b8;
+  font-size: 11px;
+  line-height: 1.35;
+}
+
+.admin-link:hover,
+.admin-link.active,
+.admin-link.router-link-active {
   background: #1d4ed8;
   color: #ffffff;
+}
+
+.admin-link:hover small,
+.admin-link.active small,
+.admin-link.router-link-active small {
+  color: #dbeafe;
+}
+
+.admin-link.level-success {
+  border-left-color: #22c55e;
+}
+
+.admin-link.level-warning {
+  border-left-color: #f59e0b;
+}
+
+.admin-link.level-danger {
+  border-left-color: #ef4444;
+}
+
+.admin-link.level-info {
+  border-left-color: #38bdf8;
+}
+
+.link-title {
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.empty-menu {
+  margin: 18px 6px;
+  border: 1px dashed rgba(148, 163, 184, 0.4);
+  border-radius: 10px;
+  padding: 14px;
+  color: #94a3b8;
+  font-size: 13px;
+  line-height: 1.6;
 }
 
 .admin-workspace {
@@ -242,6 +376,10 @@ onMounted(async () => {
   padding: 10px 18px;
   background: #ffffff;
   border-bottom: 1px solid #e5e7eb;
+}
+
+.topbar-title {
+  min-width: 0;
 }
 
 .admin-topbar strong,
@@ -268,6 +406,7 @@ onMounted(async () => {
   border-radius: 8px;
   padding: 7px 10px;
   color: #2563eb;
+  text-decoration: none;
 }
 
 .admin-main {
@@ -288,8 +427,8 @@ onMounted(async () => {
   .admin-sidebar {
     position: fixed;
     z-index: 40;
-    left: -260px;
-    width: 236px;
+    left: -292px;
+    width: 268px;
     transition: left 0.2s ease;
   }
 

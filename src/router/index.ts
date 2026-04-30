@@ -28,6 +28,11 @@ const Dashboard = () => import('../views/admin/Dashboard.vue')
 const Users = () => import('../views/admin/Users.vue')
 const ContentManager = () => import('../views/admin/ContentManager.vue')
 const NotificationEvents = () => import('../views/admin/NotificationEvents.vue')
+const NotificationOverview = () => import('../views/admin/NotificationOverview.vue')
+const NotificationTemplates = () => import('../views/admin/NotificationTemplates.vue')
+const NotificationInbox = () => import('../views/admin/NotificationInbox.vue')
+const SystemConfigs = () => import('../views/admin/SystemConfigs.vue')
+const Dictionaries = () => import('../views/admin/Dictionaries.vue')
 const MemberAdmin = () => import('../views/admin/MemberAdmin.vue')
 const TranscodeTasks = () => import('../views/admin/TranscodeTasks.vue')
 const PlaybackReadinessBatch = () => import('../views/admin/PlaybackReadinessBatch.vue')
@@ -85,7 +90,12 @@ export const router = createRouter({
         { path: 'dashboard', component: Dashboard, meta: { permissionCode: 'dashboard:view' } },
         { path: 'users', component: Users, meta: { permissionCode: 'user:view' } },
         { path: 'content', component: ContentManager, meta: { permissionCode: 'content:manage' } },
+        { path: 'notification-overview', component: NotificationOverview, meta: { permissionCode: 'notification:overview:view' } },
         { path: 'notification-events', component: NotificationEvents, meta: { permissionCode: 'notification:event:view' } },
+        { path: 'notification-templates', component: NotificationTemplates, meta: { permissionCode: 'notification:template:view' } },
+        { path: 'notification-inbox', component: NotificationInbox, meta: { permissionCode: 'notification:inbox:admin:view' } },
+        { path: 'system-configs', component: SystemConfigs, meta: { permissionCode: 'system:config:view' } },
+        { path: 'dictionaries', component: Dictionaries, meta: { permissionCode: 'system:dict:view' } },
         { path: 'members', component: MemberAdmin, meta: { permissionCode: 'member:manage' } },
         { path: 'transcode-tasks', component: TranscodeTasks, meta: { permissionCode: 'video:transcode:view' } },
         { path: 'playback-readiness-batch', component: PlaybackReadinessBatch, meta: { permissionCode: 'video:playback:readiness:view' } },

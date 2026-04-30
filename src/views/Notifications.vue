@@ -2,22 +2,15 @@
 import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { ACCESS_TOKEN_KEY, getCurrentUserId } from '../api/http'
 import {
+  clearReadNotifications,
   deleteNotification,
+  deleteNotifications,
   listAnnouncements,
-  listNotificationEventLogs,
   listNotificationPreferences,
   listNotifications,
   markAllNotificationsRead,
   markNotificationRead,
-  publishAsyncAuditEvent,
-  publishAsyncInteractionEvent,
-  publishAsyncTranscodeEvent,
-  publishAuditEvent,
-  publishInteractionEvent,
-  publishSecurityEvent,
-  publishSystemNotification,
-  publishTranscodeEvent,
-  retryNotificationEvent,
+  markNotificationsRead,
   saveNotificationPreferences,
   unreadNotificationCount
 } from '../api/notification'
@@ -43,38 +36,17 @@ interface PreferenceItem {
   forced?: boolean
 }
 
-interface EventLogItem {
-  id: number
-  eventId: string
-  eventType: string
-  receiverUserId: number
-  bizId?: number
-  messageId?: number
-  status: string
-  retryCount: number
-  errorMessage?: string
-  createdAt?: string
-}
-
 const inbox = ref<NotificationItem[]>([])
 const announcements = ref<NotificationItem[]>([])
-const eventLogs = ref<EventLogItem[]>([])
 const preferences = ref<PreferenceItem[]>([])
 const unread = ref(0)
 const loading = ref(false)
 const message = ref('')
 const readStatus = ref('')
-const eventStatus = ref('')
 const realtimeStatus = ref<'disconnected' | 'connected' | 'error'>('disconnected')
-const currentUserId = computed(() => getCurrentUserId() || 1)
+const selectedIds = ref<number[]>([])
+const currentUserId = computed(() => getCurrentUserId())
 let eventSource: EventSource | null = null
-
-const form = ref({
-  title: '系统测试通知',
-  content: '这是一条来自 VSpicy 消息中心的测试通知。',
-  priority: 'NORMAL',
-  receiverUserIds: String(currentUserId.value)
-})
 
 const preferenceNameMap: Record<string, string> = {
   SYSTEM: '系统通知',
@@ -85,6 +57,9 @@ const preferenceNameMap: Record<string, string> = {
 }
 
 const unreadText = computed(() => unread.value > 99 ? '99+' : String(unread.value))
+const visibleIds = computed(() => inbox.value.map((item) => item.inboxId))
+const selectedCount = computed(() => selectedIds.value.length)
+const allSelected = computed(() => visibleIds.value.length > 0 && visibleIds.value.every((id) => selectedIds.value.includes(id)))
 
 async function load() {
   loading.value = true
@@ -93,22 +68,18 @@ async function load() {
     const inboxParams: any = { limit: 100 }
     if (readStatus.value !== '') inboxParams.readStatus = Number(readStatus.value)
 
-    const eventLogParams: any = { limit: 50 }
-    if (eventStatus.value) eventLogParams.status = eventStatus.value
-
-    const [inboxRes, countRes, announcementRes, eventLogRes, preferenceRes]: any[] = await Promise.all([
+    const [inboxRes, countRes, announcementRes, preferenceRes]: any[] = await Promise.all([
       listNotifications(inboxParams),
       unreadNotificationCount(),
       listAnnouncements(10),
-      listNotificationEventLogs(eventLogParams),
       listNotificationPreferences()
     ])
 
     if (inboxRes.code === 0) inbox.value = inboxRes.data || []
     if (countRes.code === 0) unread.value = countRes.data?.unreadCount || 0
     if (announcementRes.code === 0) announcements.value = announcementRes.data || []
-    if (eventLogRes.code === 0) eventLogs.value = eventLogRes.data || []
     if (preferenceRes.code === 0) preferences.value = preferenceRes.data || []
+    selectedIds.value = selectedIds.value.filter((id) => visibleIds.value.includes(id))
   } catch (error) {
     message.value = formatApiError(error, '通知数据加载失败')
   } finally {
@@ -120,10 +91,11 @@ function connectSse() {
   closeSse()
 
   const token = localStorage.getItem(ACCESS_TOKEN_KEY)
-  const params = new URLSearchParams({ userId: String(currentUserId.value) })
+  const params = new URLSearchParams()
   if (token) params.set('access_token', token)
+  const url = params.toString() ? `/api/notifications/stream?${params.toString()}` : '/api/notifications/stream'
 
-  eventSource = new EventSource(`/api/notifications/stream?${params.toString()}`)
+  eventSource = new EventSource(url)
 
   eventSource.addEventListener('connected', () => {
     realtimeStatus.value = 'connected'
@@ -148,17 +120,20 @@ function closeSse() {
   realtimeStatus.value = 'disconnected'
 }
 
-function receiverIds() {
-  return form.value.receiverUserIds
-    .split(',')
-    .map((x) => x.trim())
-    .filter(Boolean)
-    .map((x) => Number(x))
-    .filter((x) => Number.isFinite(x))
-}
-
 function displayPreferenceName(item: PreferenceItem) {
   return preferenceNameMap[item.notificationType] || item.notificationName || item.notificationType
+}
+
+function toggleSelect(id: number, checked: boolean) {
+  if (checked) {
+    if (!selectedIds.value.includes(id)) selectedIds.value.push(id)
+    return
+  }
+  selectedIds.value = selectedIds.value.filter((item) => item !== id)
+}
+
+function toggleSelectAll() {
+  selectedIds.value = allSelected.value ? [] : visibleIds.value.slice()
 }
 
 async function runAction(action: () => Promise<any>, successText: string) {
@@ -178,81 +153,13 @@ async function savePreferences() {
   )
 }
 
-async function publishTest() {
-  await runAction(
-    () => publishSystemNotification({
-      title: form.value.title,
-      content: form.value.content,
-      notificationType: 'SYSTEM',
-      bizType: 'TEST',
-      bizId: Date.now(),
-      priority: form.value.priority,
-      receiverUserIds: receiverIds()
-    }),
-    '测试通知已发布'
-  )
-}
-
-async function simulateTranscode(asyncMode = false) {
-  const payload = {
-    receiverUserId: currentUserId.value,
-    bizId: 2,
-    title: 'VSpicy 测试视频',
-    result: 'SUCCESS',
-    reason: 'HLS 切片已完成'
-  }
-  await runAction(
-    () => asyncMode ? publishAsyncTranscodeEvent(payload) : publishTranscodeEvent(payload),
-    asyncMode ? '已投递异步转码事件' : '已发布转码事件通知'
-  )
-}
-
-async function simulateAuditReject(asyncMode = false) {
-  const payload = {
-    receiverUserId: currentUserId.value,
-    bizId: 10,
-    title: '测试文章',
-    result: 'REJECTED',
-    reason: '命中敏感词或内容质量较低'
-  }
-  await runAction(
-    () => asyncMode ? publishAsyncAuditEvent(payload) : publishAuditEvent(payload),
-    asyncMode ? '已投递异步审核事件' : '已发布审核事件通知'
-  )
-}
-
-async function simulateInteraction(asyncMode = false) {
-  const payload = {
-    receiverUserId: currentUserId.value,
-    bizId: 100,
-    title: asyncMode ? 'MQ 互动通知' : '你的评论收到点赞',
-    actorName: asyncMode ? '用户B' : '用户A',
-    content: asyncMode ? '用户B 回复了你的评论' : '用户A 点赞了你的评论'
-  }
-  await runAction(
-    () => asyncMode ? publishAsyncInteractionEvent(payload) : publishInteractionEvent(payload),
-    asyncMode ? '已投递异步互动事件' : '已发布互动事件通知'
-  )
-}
-
-async function simulateSecurity() {
-  await runAction(
-    () => publishSecurityEvent({
-      receiverUserId: currentUserId.value,
-      bizId: Date.now(),
-      title: '安全提醒',
-      content: '检测到一次新的登录行为，请确认是否为本人操作。'
-    }),
-    '已发布安全事件通知'
-  )
-}
-
-async function retryEvent(item: EventLogItem) {
-  await runAction(() => retryNotificationEvent(item.eventId), '事件已提交重试')
-}
-
 async function markRead(item: NotificationItem) {
   await runAction(() => markNotificationRead(item.inboxId), '已标记为已读')
+}
+
+async function markSelectedRead() {
+  if (selectedIds.value.length === 0) return
+  await runAction(() => markNotificationsRead(selectedIds.value), `已标记 ${selectedIds.value.length} 条通知为已读`)
 }
 
 async function markAllRead() {
@@ -264,16 +171,23 @@ async function remove(item: NotificationItem) {
   await runAction(() => deleteNotification(item.inboxId), '通知已删除')
 }
 
+async function removeSelected() {
+  if (selectedIds.value.length === 0) return
+  if (!confirm(`确认删除选中的 ${selectedIds.value.length} 条通知？`)) return
+  await runAction(() => deleteNotifications(selectedIds.value), `已删除 ${selectedIds.value.length} 条通知`)
+}
+
+async function clearRead() {
+  if (!confirm('确认清理全部已读通知？未读通知不会被删除。')) return
+  await runAction(() => clearReadNotifications(), '已读通知已清理')
+}
+
 function typeClass(type: string) {
   return ['tag', type.toLowerCase()].join(' ')
 }
 
 function priorityClass(priority: string) {
   return priority === 'HIGH' || priority === 'URGENT' ? 'priority high' : 'priority'
-}
-
-function statusClass(status: string) {
-  return ['status', status.toLowerCase()].join(' ')
 }
 
 onMounted(async () => {
@@ -289,10 +203,14 @@ onBeforeUnmount(closeSse)
     <div class="hero">
       <div>
         <span class="eyebrow">消息中心</span>
-        <h1>通知、公告和事件投递</h1>
-        <p>统一查看个人收件箱、管理通知偏好，并验证业务事件通知链路。</p>
+        <h1>我的通知与系统公告</h1>
+        <p>查看收件箱、管理通知偏好，并通过 SSE 实时接收审核、转码、互动和安全提醒。</p>
       </div>
       <div class="status-board">
+        <div>
+          <span>当前用户</span>
+          <strong>{{ currentUserId || '-' }}</strong>
+        </div>
         <div>
           <span>未读</span>
           <strong>{{ unreadText }}</strong>
@@ -309,6 +227,7 @@ onBeforeUnmount(closeSse)
     <div class="toolbar">
       <button class="button" :disabled="loading" @click="load">{{ loading ? '加载中...' : '刷新' }}</button>
       <button class="button secondary" @click="markAllRead">全部已读</button>
+      <button class="button warning" @click="clearRead">清理已读</button>
       <button class="button neutral" @click="connectSse">重连实时通知</button>
     </div>
 
@@ -333,56 +252,50 @@ onBeforeUnmount(closeSse)
       </section>
 
       <section class="panel">
-        <h2>发布测试通知</h2>
-        <div class="form-grid">
-          <input v-model="form.title" class="input" placeholder="标题" />
-          <select v-model="form.priority" class="input">
-            <option value="LOW">LOW</option>
-            <option value="NORMAL">NORMAL</option>
-            <option value="HIGH">HIGH</option>
-            <option value="URGENT">URGENT</option>
-          </select>
-        </div>
-        <input v-model="form.receiverUserIds" class="input" placeholder="接收用户 ID，多个用英文逗号分隔" />
-        <textarea v-model="form.content" class="input textarea" placeholder="通知内容"></textarea>
-        <button class="button" @click="publishTest">发布测试通知</button>
+        <h2>系统公告</h2>
+        <div v-if="announcements.length === 0" class="empty">暂无公告</div>
+        <article v-for="item in announcements" :key="item.messageId" class="notice">
+          <strong>{{ item.title }}</strong>
+          <p>{{ item.content }}</p>
+          <small>{{ item.createdAt }}</small>
+        </article>
       </section>
     </div>
 
     <section class="panel">
       <div class="panel-head">
         <div>
-          <h2>业务事件模拟</h2>
-          <p>可用于验证转码、审核、互动、安全提醒等事件通知是否能进入当前用户收件箱。</p>
-        </div>
-      </div>
-      <div class="event-actions">
-        <button class="button" @click="simulateTranscode(false)">转码完成</button>
-        <button class="button warning" @click="simulateAuditReject(false)">审核拒绝</button>
-        <button class="button accent" @click="simulateInteraction(false)">互动点赞</button>
-        <button class="button danger" @click="simulateSecurity">安全提醒</button>
-        <button class="button neutral" @click="simulateTranscode(true)">MQ 转码</button>
-        <button class="button neutral" @click="simulateAuditReject(true)">MQ 审核</button>
-        <button class="button neutral" @click="simulateInteraction(true)">MQ 互动</button>
-      </div>
-    </section>
-
-    <section class="panel">
-      <div class="panel-head">
-        <div>
           <h2>我的收件箱</h2>
-          <p>当前用户：{{ currentUserId }}</p>
+          <p>普通用户只能查看自己的通知；管理员事件投递与模板发布已移入后台。</p>
         </div>
-        <select v-model="readStatus" class="input compact" @change="load">
-          <option value="">全部</option>
-          <option value="0">未读</option>
-          <option value="1">已读</option>
-        </select>
+        <div class="filters">
+          <select v-model="readStatus" class="input compact" @change="load">
+            <option value="">全部</option>
+            <option value="0">未读</option>
+            <option value="1">已读</option>
+          </select>
+        </div>
       </div>
+
+      <div class="batch-bar">
+        <label class="select-all">
+          <input type="checkbox" :checked="allSelected" @change="toggleSelectAll" />
+          <span>全选当前列表</span>
+        </label>
+        <span class="selected-count">已选 {{ selectedCount }} 条</span>
+        <button class="plain" :disabled="selectedCount === 0" @click="markSelectedRead">批量已读</button>
+        <button class="plain danger-text" :disabled="selectedCount === 0" @click="removeSelected">批量删除</button>
+      </div>
+
       <div v-if="inbox.length === 0" class="empty">暂无通知</div>
       <article v-for="item in inbox" :key="item.inboxId" class="inbox-item" :class="{ unread: item.readStatus === 0 }">
         <div class="inbox-head">
-          <div>
+          <div class="inbox-title">
+            <input
+              type="checkbox"
+              :checked="selectedIds.includes(item.inboxId)"
+              @change="toggleSelect(item.inboxId, ($event.target as HTMLInputElement).checked)"
+            />
             <span :class="typeClass(item.notificationType)">{{ item.notificationType }}</span>
             <span :class="priorityClass(item.priority)">{{ item.priority }}</span>
             <strong>{{ item.title }}</strong>
@@ -396,57 +309,6 @@ onBeforeUnmount(closeSse)
         <small>inboxId={{ item.inboxId }} / biz={{ item.bizType || '-' }}#{{ item.bizId || '-' }} / {{ item.createdAt }}</small>
       </article>
     </section>
-
-    <div class="grid two">
-      <section class="panel">
-        <h2>系统公告</h2>
-        <div v-if="announcements.length === 0" class="empty">暂无公告</div>
-        <article v-for="item in announcements" :key="item.messageId" class="notice">
-          <strong>{{ item.title }}</strong>
-          <p>{{ item.content }}</p>
-          <small>{{ item.createdAt }}</small>
-        </article>
-      </section>
-
-      <section class="panel">
-        <div class="panel-head">
-          <h2>事件日志</h2>
-          <select v-model="eventStatus" class="input compact" @change="load">
-            <option value="">全部状态</option>
-            <option value="PENDING">PENDING</option>
-            <option value="SENT">SENT</option>
-            <option value="SUCCESS">SUCCESS</option>
-            <option value="FAILED">FAILED</option>
-            <option value="SKIPPED">SKIPPED</option>
-            <option value="DEAD">DEAD</option>
-          </select>
-        </div>
-        <div class="table-wrap">
-          <table>
-            <thead>
-              <tr>
-                <th>ID</th>
-                <th>类型</th>
-                <th>状态</th>
-                <th>接收人</th>
-                <th>重试</th>
-                <th>操作</th>
-              </tr>
-            </thead>
-            <tbody>
-              <tr v-for="item in eventLogs" :key="item.id">
-                <td>{{ item.id }}</td>
-                <td>{{ item.eventType }}</td>
-                <td><span :class="statusClass(item.status)">{{ item.status }}</span></td>
-                <td>{{ item.receiverUserId }}</td>
-                <td>{{ item.retryCount }}</td>
-                <td><button class="plain" @click="retryEvent(item)">重试</button></td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </section>
-    </div>
   </section>
 </template>
 
@@ -487,7 +349,7 @@ onBeforeUnmount(closeSse)
 
 .status-board {
   display: grid;
-  grid-template-columns: repeat(2, 120px);
+  grid-template-columns: repeat(3, 120px);
   gap: 10px;
 }
 
@@ -510,24 +372,27 @@ onBeforeUnmount(closeSse)
 }
 
 .toolbar,
-.event-actions,
-.actions {
+.actions,
+.filters,
+.batch-bar,
+.inbox-title {
   display: flex;
   flex-wrap: wrap;
+  align-items: center;
   gap: 10px;
 }
 
 .grid.two {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
 .panel {
-  background: #fff;
-  border: 1px solid #e5e7eb;
+  padding: 20px;
   border-radius: 8px;
-  padding: 18px;
+  background: #fff;
+  box-shadow: 0 8px 24px rgba(15, 23, 42, 0.08);
 }
 
 .panel-head {
@@ -537,95 +402,101 @@ onBeforeUnmount(closeSse)
   align-items: flex-start;
 }
 
-.panel h2 {
-  margin: 0 0 6px;
-  font-size: 18px;
-}
-
-.preference-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(190px, 1fr));
-  gap: 10px;
-  margin-top: 14px;
-}
-
-.preference-item {
-  display: flex;
-  gap: 10px;
-  align-items: center;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
+.button,
+.plain {
+  border: 0;
   border-radius: 8px;
-  background: #f9fafb;
+  cursor: pointer;
 }
 
-.preference-item small {
-  display: block;
-  margin-top: 2px;
-  color: #6b7280;
-}
-
-.form-grid {
-  display: grid;
-  grid-template-columns: 1fr 140px;
-  gap: 10px;
-}
-
-.input.compact {
-  width: 150px;
-  margin: 0;
-}
-
-.textarea {
-  min-height: 88px;
-  padding-top: 10px;
+.button {
+  padding: 10px 14px;
+  background: #111827;
+  color: #fff;
 }
 
 .button.secondary {
   background: #2563eb;
 }
 
+.button.warning {
+  background: #d97706;
+}
+
 .button.neutral {
   background: #4b5563;
 }
 
-.button.warning {
-  background: #b45309;
+.button:disabled,
+.plain:disabled {
+  cursor: not-allowed;
+  opacity: 0.55;
 }
 
-.button.accent {
-  background: #db2777;
+.plain {
+  padding: 6px 8px;
+  background: #f3f4f6;
+  color: #2563eb;
 }
 
-.button.danger {
-  background: #991b1b;
+.danger-text {
+  color: #dc2626;
 }
 
-.message {
-  margin: 0;
-  color: #b91c1c;
-  font-weight: 700;
+.input {
+  width: 100%;
+  box-sizing: border-box;
+  padding: 10px 12px;
+  border: 1px solid #d1d5db;
+  border-radius: 8px;
 }
 
-.empty {
-  padding: 20px;
+.input.compact {
+  width: 140px;
+}
+
+.preference-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 12px;
+}
+
+.preference-item,
+.select-all {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.preference-item small,
+.notice small,
+.inbox-item small {
+  display: block;
+  color: #9ca3af;
+}
+
+.batch-bar {
+  margin: 14px 0;
+  padding: 12px;
   border-radius: 8px;
   background: #f9fafb;
+}
+
+.selected-count {
   color: #6b7280;
 }
 
 .inbox-item,
 .notice {
-  border-top: 1px solid #e5e7eb;
-  padding: 14px 0;
+  margin-top: 12px;
+  padding: 14px;
+  border: 1px solid #e5e7eb;
+  border-radius: 8px;
 }
 
 .inbox-item.unread {
-  border-top-color: #2563eb;
+  border-color: #2563eb;
   background: #eff6ff;
-  margin: 10px -10px 0;
-  padding: 14px 10px;
-  border-radius: 8px;
 }
 
 .inbox-head {
@@ -635,79 +506,57 @@ onBeforeUnmount(closeSse)
 }
 
 .tag,
-.priority,
-.status {
-  display: inline-block;
+.priority {
+  display: inline-flex;
+  align-items: center;
   padding: 2px 8px;
   border-radius: 999px;
-  margin-right: 8px;
-  font-size: 12px;
   background: #f3f4f6;
   color: #374151;
+  font-size: 12px;
 }
 
-.system {
-  background: #eef2ff;
-  color: #3730a3;
+.tag.system {
+  background: #eff6ff;
+  color: #1d4ed8;
 }
 
-.audit,
-.warning {
-  background: #fef3c7;
-  color: #92400e;
+.tag.audit {
+  background: #fef2f2;
+  color: #b91c1c;
 }
 
-.transcode,
-.success {
-  background: #dcfce7;
-  color: #166534;
+.tag.transcode {
+  background: #ecfdf5;
+  color: #047857;
 }
 
-.interaction {
-  background: #fce7f3;
-  color: #9d174d;
+.tag.interaction {
+  background: #f5f3ff;
+  color: #6d28d9;
 }
 
-.security,
-.failed,
-.dead,
+.tag.security {
+  background: #fff7ed;
+  color: #c2410c;
+}
+
 .priority.high {
   background: #fee2e2;
   color: #991b1b;
 }
 
-.sent {
-  background: #dbeafe;
-  color: #1d4ed8;
+.empty {
+  padding: 24px;
+  color: #9ca3af;
+  text-align: center;
 }
 
-.plain {
-  border: 0;
-  background: transparent;
-  color: #2563eb;
-  cursor: pointer;
-}
-
-.danger-text {
-  color: #991b1b;
-}
-
-.table-wrap {
-  overflow-x: auto;
-}
-
-table {
-  width: 100%;
-  border-collapse: collapse;
-}
-
-th,
-td {
-  border-bottom: 1px solid #e5e7eb;
-  padding: 8px;
-  text-align: left;
-  font-size: 13px;
-  white-space: nowrap;
+.message {
+  padding: 12px;
+  border-radius: 8px;
+  background: #fff7ed;
+  color: #c2410c;
 }
 
 @media (max-width: 900px) {
@@ -718,16 +567,8 @@ td {
   }
 
   .grid.two,
-  .form-grid {
-    grid-template-columns: 1fr;
-  }
-
   .status-board {
-    grid-template-columns: repeat(2, minmax(0, 1fr));
-  }
-
-  .input.compact {
-    width: 100%;
+    grid-template-columns: 1fr;
   }
 }
 </style>

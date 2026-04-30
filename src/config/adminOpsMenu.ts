@@ -43,11 +43,35 @@ export const adminOpsMenuItems: AdminOpsMenuItem[] = [
     group: 'admin'
   },
   {
+    title: '通知看板',
+    description: '查看通知投递、阅读率、事件状态、模板和在线连接指标。',
+    path: '/admin/notification-overview',
+    permission: 'notification:overview:view',
+    level: 'info',
+    group: 'admin'
+  },
+  {
     title: '通知事件',
     description: '查看异步通知事件日志，并对失败事件进行人工重试。',
     path: '/admin/notification-events',
     permission: 'notification:event:view',
     level: 'warning',
+    group: 'admin'
+  },
+  {
+    title: '通知模板',
+    description: '维护站内通知模板，支持变量预览、发布预检和模板发布记录。',
+    path: '/admin/notification-templates',
+    permission: 'notification:template:view',
+    level: 'info',
+    group: 'admin'
+  },
+  {
+    title: '通知投递',
+    description: '按用户、状态、类型和关键词查询通知投递与阅读情况。',
+    path: '/admin/notification-inbox',
+    permission: 'notification:inbox:admin:view',
+    level: 'info',
     group: 'admin'
   },
   {
@@ -105,6 +129,30 @@ export const adminOpsMenuItems: AdminOpsMenuItem[] = [
     permission: 'video:operation:audit:view',
     level: 'info',
     group: 'audit'
+  },
+  {
+    title: '审计日志',
+    description: '查看后台操作日志、失败原因、慢操作、CSV 导出和审计留存清理。',
+    path: '/admin/operation-logs',
+    permission: 'operation:log:view',
+    level: 'warning',
+    group: 'audit'
+  },
+  {
+    title: '系统配置',
+    description: '集中维护系统运行参数、业务开关和运营默认值。',
+    path: '/admin/system-configs',
+    permission: 'system:config:view',
+    level: 'warning',
+    group: 'admin'
+  },
+  {
+    title: '系统字典',
+    description: '维护平台状态、类型、等级和运营枚举，供后台筛选与业务校验复用。',
+    path: '/admin/dictionaries',
+    permission: 'system:dict:view',
+    level: 'info',
+    group: 'admin'
   },
   {
     title: 'API 诊断',
