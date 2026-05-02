@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
-import { getRecentOperationAudit } from '../../api/operationAudit'
+import { getRecentOperationAudit } from '../../api/videoOperationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../common/ApiState.vue'
 

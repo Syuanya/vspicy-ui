@@ -136,8 +136,10 @@ onMounted(async () => {
   align-items: center;
   gap: 18px;
   padding: 10px 18px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.9);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  backdrop-filter: blur(12px);
+  box-shadow: 0 8px 30px rgba(15, 23, 42, 0.04);
 }
 
 .header-main {
@@ -160,8 +162,8 @@ onMounted(async () => {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
-  background: #111827;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #111827, #2563eb);
   color: #ffffff;
   font-weight: 800;
 }
@@ -208,7 +210,7 @@ onMounted(async () => {
   gap: 4px;
   min-height: 34px;
   padding: 6px 9px;
-  border-radius: 8px;
+  border-radius: 10px;
   color: #374151;
   text-decoration: none;
   font-size: 14px;
@@ -249,14 +251,14 @@ onMounted(async () => {
 .mobile-toggle {
   display: none;
   border: 1px solid #d1d5db;
-  border-radius: 8px;
+  border-radius: 10px;
   background: #fff;
   padding: 7px 10px;
 }
 
 .user-main {
-  max-width: 1120px;
-  margin: 24px auto;
+  max-width: 1180px;
+  margin: 28px auto;
   padding: 0 16px;
 }
 

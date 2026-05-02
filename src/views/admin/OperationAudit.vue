@@ -7,7 +7,7 @@ import {
   getOperationAuditStats,
   listOperationAuditAdvanced,
   recordOperationAudit
-} from '../../api/operationAudit'
+} from '../../api/videoOperationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../../components/common/ApiState.vue'
 import OperationAuditRiskPanel from '../../components/admin/OperationAuditRiskPanel.vue'

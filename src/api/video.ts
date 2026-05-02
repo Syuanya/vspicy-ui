@@ -20,11 +20,7 @@ export function uploadVideoChunk(taskId: number, chunkIndex: number, chunk: Blob
     form.append('chunkHash', chunkHash)
   }
   form.append('file', chunk)
-  return http.post(`/videos/upload-tasks/${taskId}/chunks`, form, {
-    headers: {
-      'Content-Type': 'multipart/form-data'
-    }
-  })
+  return http.post(`/videos/upload-tasks/${taskId}/chunks`, form)
 }
 
 export function completeUpload(taskId: number) {

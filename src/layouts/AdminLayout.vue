@@ -18,15 +18,17 @@ const keyword = ref('')
 
 const groupMeta: Record<string, { name: string; description: string; order: number }> = {
   overview: { name: '运维概览', description: '总览入口与核心工作台', order: 10 },
-  admin: { name: '运营管理', description: '用户、内容、通知、系统配置与字典', order: 20 },
-  health: { name: '服务健康', description: '基础设施、依赖组件与健康检查', order: 30 },
-  transcode: { name: '转码播放', description: '转码任务、播放就绪与媒体链路', order: 40 },
-  playback: { name: '播放治理', description: '播放地址、HLS 状态与就绪修复', order: 50 },
-  repair: { name: '修复任务', description: 'HLS 修复与一致性处理', order: 60 },
-  storage: { name: '存储运维', description: '对象存储、容量、文件一致性和告警', order: 70 },
-  cleanup: { name: '清理治理', description: '孤儿对象、清理审批与执行', order: 80 },
-  audit: { name: '审计治理', description: '操作审计、后台日志与权限追踪', order: 90 },
-  diagnostics: { name: '诊断工具', description: 'API、路由与前后端联调诊断', order: 100 }
+  admin: { name: '运营管理', description: '用户、内容、会员、通知与工单处理', order: 20 },
+  system: { name: '系统治理', description: '权限、菜单、组织、配置、字典、任务与发布', order: 30 },
+  security: { name: '安全治理', description: '敏感词、登录安全和风险入口', order: 40 },
+  health: { name: '服务健康', description: '基础设施、依赖组件与健康检查', order: 50 },
+  diagnostics: { name: '诊断工具', description: '预检、API、路由、权限与前后端联调诊断', order: 60 },
+  transcode: { name: '转码播放', description: '转码任务、播放就绪与媒体链路', order: 70 },
+  playback: { name: '播放治理', description: '播放地址、HLS 状态与就绪修复', order: 80 },
+  repair: { name: '修复任务', description: 'HLS 修复与一致性处理', order: 90 },
+  storage: { name: '存储运维', description: '对象存储、容量、文件一致性和告警', order: 100 },
+  cleanup: { name: '清理治理', description: '孤儿对象、清理审批与执行', order: 110 },
+  audit: { name: '审计治理', description: '操作审计、后台日志与权限追踪', order: 120 }
 }
 
 function canSee(item: AdminOpsMenuItem) {
@@ -162,8 +164,8 @@ onMounted(async () => {
 .admin-shell {
   min-height: 100vh;
   display: grid;
-  grid-template-columns: 280px 1fr;
-  background: #f3f4f6;
+  grid-template-columns: 292px minmax(0, 1fr);
+  background: linear-gradient(180deg, #f8fafc 0%, #eef2ff 100%);
 }
 
 .admin-sidebar {
@@ -171,8 +173,8 @@ onMounted(async () => {
   top: 0;
   height: 100vh;
   overflow-y: auto;
-  padding: 16px 12px;
-  background: #0f172a;
+  padding: 18px 14px;
+  background: linear-gradient(180deg, #0f172a 0%, #111827 58%, #1e1b4b 100%);
   color: #e5e7eb;
 }
 
@@ -194,8 +196,8 @@ onMounted(async () => {
   place-items: center;
   width: 34px;
   height: 34px;
-  border-radius: 8px;
-  background: #2563eb;
+  border-radius: 12px;
+  background: linear-gradient(135deg, #2563eb, #7c3aed);
   color: #fff;
   font-weight: 800;
 }
@@ -214,8 +216,8 @@ onMounted(async () => {
   display: block;
   margin: 12px 6px 8px;
   border: 1px solid rgba(148, 163, 184, 0.35);
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 9px 11px;
   color: #bfdbfe;
   text-decoration: none;
 }
@@ -230,8 +232,8 @@ onMounted(async () => {
 .nav-search input {
   min-width: 0;
   border: 1px solid rgba(148, 163, 184, 0.36);
-  border-radius: 8px;
-  background: rgba(15, 23, 42, 0.65);
+  border-radius: 12px;
+  background: rgba(15, 23, 42, 0.78);
   color: #e5e7eb;
   padding: 8px 10px;
   outline: none;
@@ -243,7 +245,7 @@ onMounted(async () => {
 
 .nav-search button {
   border: 0;
-  border-radius: 8px;
+  border-radius: 12px;
   background: #334155;
   color: #e5e7eb;
   padding: 0 9px;
@@ -255,7 +257,7 @@ onMounted(async () => {
   justify-content: space-between;
   align-items: center;
   margin: 10px 6px 4px;
-  border-radius: 8px;
+  border-radius: 12px;
   background: rgba(30, 41, 59, 0.85);
   padding: 8px 10px;
   color: #cbd5e1;
@@ -305,8 +307,8 @@ onMounted(async () => {
   display: grid;
   gap: 2px;
   border-left: 3px solid transparent;
-  border-radius: 8px;
-  padding: 8px 10px;
+  border-radius: 12px;
+  padding: 9px 10px;
   color: #d1d5db;
   text-decoration: none;
 }
@@ -320,7 +322,7 @@ onMounted(async () => {
 .admin-link:hover,
 .admin-link.active,
 .admin-link.router-link-active {
-  background: #1d4ed8;
+  background: linear-gradient(135deg, #1d4ed8, #2563eb);
   color: #ffffff;
 }
 
@@ -374,8 +376,9 @@ onMounted(async () => {
   align-items: center;
   gap: 12px;
   padding: 10px 18px;
-  background: #ffffff;
-  border-bottom: 1px solid #e5e7eb;
+  background: rgba(255, 255, 255, 0.92);
+  border-bottom: 1px solid rgba(226, 232, 240, 0.9);
+  backdrop-filter: blur(12px);
 }
 
 .topbar-title {
@@ -410,9 +413,9 @@ onMounted(async () => {
 }
 
 .admin-main {
-  max-width: 1280px;
+  max-width: 1440px;
   margin: 0 auto;
-  padding: 20px;
+  padding: 22px;
 }
 
 .sidebar-mask {

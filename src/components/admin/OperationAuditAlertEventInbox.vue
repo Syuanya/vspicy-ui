@@ -8,7 +8,7 @@ import {
   resolveOperationAuditAlertEvent,
   syncOperationAuditAlertEvents,
   type OperationAuditAlertEvent
-} from '../../api/operationAudit'
+} from '../../api/videoOperationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../common/ApiState.vue'
 

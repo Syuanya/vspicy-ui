@@ -4,7 +4,7 @@ import {
   cleanupResolvedOperationAuditAlertEvents,
   getOperationAuditAlertEventAutomationStatus,
   syncOperationAuditAlertEventsOnce
-} from '../../api/operationAudit'
+} from '../../api/videoOperationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../common/ApiState.vue'
 

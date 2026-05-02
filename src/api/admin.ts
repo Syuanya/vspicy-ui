@@ -1,20 +1,49 @@
 import { http } from './http'
+import {
+  createSystemConfig as createSystemConfigV2,
+  deleteSystemConfig as deleteSystemConfigV2,
+  disableSystemConfig as disableSystemConfigV2,
+  enableSystemConfig as enableSystemConfigV2,
+  getSystemConfigOverview as getSystemConfigOverviewV2,
+  listSystemConfigs as listSystemConfigsV2,
+  updateSystemConfig as updateSystemConfigV2,
+  type SystemConfigPayload,
+  type SystemConfigQuery
+} from './systemConfig'
+import {
+  createSystemDictItem,
+  createSystemDictType,
+  deleteSystemDictItem,
+  deleteSystemDictType,
+  disableSystemDictItem,
+  disableSystemDictType,
+  enableSystemDictItem,
+  enableSystemDictType,
+  getSystemDictOverview,
+  listSystemDictItems,
+  listSystemDictTypes,
+  updateSystemDictItem,
+  updateSystemDictType,
+  type SystemDictItemPayload,
+  type SystemDictTypePayload
+} from './systemDict'
 
-export function listRoles() {
-  return http.get('/admin/roles')
+export function listRoles(params?: { keyword?: string; status?: number }) {
+  return http.get('/admin/roles', { params })
 }
 
 export function createRole(data: {
   roleCode: string
   roleName: string
   description?: string
+  status?: number
 }) {
   return http.post('/admin/roles', data)
 }
 
-export function listPermissions(type?: string) {
+export function listPermissions(type?: string, params?: { keyword?: string; status?: number }) {
   return http.get('/admin/permissions', {
-    params: type ? { type } : undefined
+    params: { ...(params || {}), ...(type ? { type } : {}) }
   })
 }
 
@@ -27,6 +56,7 @@ export function createPermission(data: {
   component?: string
   icon?: string
   sortNo?: number
+  status?: number
 }) {
   return http.post('/admin/permissions', data)
 }
@@ -63,63 +93,6 @@ export function listOperationLogs(params?: {
   return http.get('/admin/operation-logs', { params })
 }
 
-export function listSystemConfigs(params?: {
-  groupCode?: string
-  keyword?: string
-  status?: number
-  limit?: number
-}) {
-  return http.get('/admin/system-configs', { params })
-}
-
-export function listSystemConfigGroups() {
-  return http.get('/admin/system-configs/groups')
-}
-
-export function getSystemConfig(id: number) {
-  return http.get(`/admin/system-configs/${id}`)
-}
-
-export function createSystemConfig(data: {
-  configKey: string
-  configName: string
-  configValue?: string
-  configType?: string
-  groupCode?: string
-  description?: string
-  editable?: boolean
-  encrypted?: boolean
-  status?: number
-}) {
-  return http.post('/admin/system-configs', data)
-}
-
-export function updateSystemConfig(id: number, data: {
-  configKey?: string
-  configName?: string
-  configValue?: string
-  configType?: string
-  groupCode?: string
-  description?: string
-  editable?: boolean
-  encrypted?: boolean
-  status?: number
-}) {
-  return http.put(`/admin/system-configs/${id}`, data)
-}
-
-export function enableSystemConfig(id: number) {
-  return http.post(`/admin/system-configs/${id}/enable`)
-}
-
-export function disableSystemConfig(id: number) {
-  return http.post(`/admin/system-configs/${id}/disable`)
-}
-
-export function deleteSystemConfig(id: number) {
-  return http.delete(`/admin/system-configs/${id}`)
-}
-
 export function getOperationLogOverview(days = 7) {
   return http.get('/admin/operation-logs/overview', { params: { days } })
 }
@@ -145,95 +118,172 @@ export function cleanupOperationLogs(data: {
   return http.post('/admin/operation-logs/cleanup', data)
 }
 
+export function getPermissionOverview() {
+  return http.get('/admin/permissions/overview')
+}
+
+export function getRole(roleId: number) {
+  return http.get(`/admin/roles/${roleId}`)
+}
+
+export function updateRole(roleId: number, data: {
+  roleCode?: string
+  roleName?: string
+  description?: string
+  status?: number
+}) {
+  return http.put(`/admin/roles/${roleId}`, data)
+}
+
+export function enableRole(roleId: number) {
+  return http.post(`/admin/roles/${roleId}/enable`)
+}
+
+export function disableRole(roleId: number) {
+  return http.post(`/admin/roles/${roleId}/disable`)
+}
+
+export function getPermission(permissionId: number) {
+  return http.get(`/admin/permissions/${permissionId}`)
+}
+
+export function updatePermission(permissionId: number, data: {
+  parentId?: number
+  permissionCode?: string
+  permissionName?: string
+  permissionType?: string
+  path?: string
+  component?: string
+  icon?: string
+  sortNo?: number
+  status?: number
+}) {
+  return http.put(`/admin/permissions/${permissionId}`, data)
+}
+
+export function enablePermission(permissionId: number) {
+  return http.post(`/admin/permissions/${permissionId}/enable`)
+}
+
+export function disablePermission(permissionId: number) {
+  return http.post(`/admin/permissions/${permissionId}/disable`)
+}
+
+export function getRolePermissionSummary(roleId: number) {
+  return http.get(`/admin/roles/${roleId}/permission-summary`)
+}
+
+export function listSystemConfigs(params?: SystemConfigQuery & { groupCode?: string; configType?: string; encrypted?: boolean }) {
+  const mappedParams = {
+    ...params,
+    category: params?.category || params?.groupCode,
+    valueType: params?.valueType || params?.configType,
+    sensitive: params?.sensitive ?? params?.encrypted
+  }
+  return listSystemConfigsV2(mappedParams)
+}
+
+export async function listSystemConfigGroups() {
+  const res: any = await getSystemConfigOverviewV2()
+  return res?.data?.groups || res?.groups || []
+}
+
+export function createSystemConfig(data: Omit<SystemConfigPayload, 'status'> & {
+  groupCode?: string
+  configType?: string
+  encrypted?: boolean
+  status?: string | number
+}) {
+  return createSystemConfigV2({
+    ...data,
+    category: data.category || data.groupCode,
+    valueType: data.valueType || data.configType,
+    sensitive: data.sensitive ?? data.encrypted,
+    status: data.status == null ? undefined : String(data.status)
+  })
+}
+
+export function updateSystemConfig(id: number, data: Omit<SystemConfigPayload, 'status'> & {
+  groupCode?: string
+  configType?: string
+  encrypted?: boolean
+  status?: string | number
+}) {
+  return updateSystemConfigV2(id, {
+    ...data,
+    category: data.category || data.groupCode,
+    valueType: data.valueType || data.configType,
+    sensitive: data.sensitive ?? data.encrypted,
+    status: data.status == null ? undefined : String(data.status)
+  })
+}
+
+export function enableSystemConfig(id: number) {
+  return enableSystemConfigV2(id)
+}
+
+export function disableSystemConfig(id: number) {
+  return disableSystemConfigV2(id)
+}
+
+export function deleteSystemConfig(id: number) {
+  return deleteSystemConfigV2(id)
+}
+
 export function getDictionaryOverview() {
-  return http.get('/admin/dictionaries/overview')
+  return getSystemDictOverview()
 }
 
-export function listDictionaryTypes(params?: {
-  keyword?: string
-  status?: number
-  limit?: number
-}) {
-  return http.get('/admin/dictionaries/types', { params })
+export function listDictionaryTypes(params?: { keyword?: string; status?: number | string; limit?: number }) {
+  return listSystemDictTypes({
+    ...params,
+    status: typeof params?.status === 'string' && params.status !== '' ? Number(params.status) : params?.status as number | undefined
+  })
 }
 
-export function createDictionaryType(data: {
-  typeCode: string
-  typeName: string
-  description?: string
-  status?: number
-  editable?: boolean
-}) {
-  return http.post('/admin/dictionaries/types', data)
+export function createDictionaryType(data: SystemDictTypePayload) {
+  return createSystemDictType(data)
 }
 
-export function updateDictionaryType(id: number, data: {
-  typeCode?: string
-  typeName?: string
-  description?: string
-  status?: number
-  editable?: boolean
-}) {
-  return http.put(`/admin/dictionaries/types/${id}`, data)
+export function updateDictionaryType(id: number, data: SystemDictTypePayload) {
+  return updateSystemDictType(id, data)
 }
 
 export function enableDictionaryType(id: number) {
-  return http.post(`/admin/dictionaries/types/${id}/enable`)
+  return enableSystemDictType(id)
 }
 
 export function disableDictionaryType(id: number) {
-  return http.post(`/admin/dictionaries/types/${id}/disable`)
+  return disableSystemDictType(id)
 }
 
 export function deleteDictionaryType(id: number) {
-  return http.delete(`/admin/dictionaries/types/${id}`)
+  return deleteSystemDictType(id)
 }
 
-export function listDictionaryItems(params?: {
-  typeCode?: string
-  keyword?: string
-  status?: number
-  limit?: number
-}) {
-  return http.get('/admin/dictionaries/items', { params })
+export function listDictionaryItems(params?: { typeCode?: string; keyword?: string; status?: number | string; limit?: number }) {
+  return listSystemDictItems({
+    ...params,
+    status: typeof params?.status === 'string' && params.status !== '' ? Number(params.status) : params?.status as number | undefined
+  })
 }
 
-export function createDictionaryItem(data: {
-  typeCode: string
-  itemLabel: string
-  itemValue: string
-  sortNo?: number
-  cssClass?: string
-  extraJson?: string
-  status?: number
-  editable?: boolean
-  remark?: string
-}) {
-  return http.post('/admin/dictionaries/items', data)
+export function createDictionaryItem(data: SystemDictItemPayload) {
+  return createSystemDictItem(data)
 }
 
-export function updateDictionaryItem(id: number, data: {
-  typeCode?: string
-  itemLabel?: string
-  itemValue?: string
-  sortNo?: number
-  cssClass?: string
-  extraJson?: string
-  status?: number
-  editable?: boolean
-  remark?: string
-}) {
-  return http.put(`/admin/dictionaries/items/${id}`, data)
+export function updateDictionaryItem(id: number, data: SystemDictItemPayload) {
+  return updateSystemDictItem(id, data)
 }
 
 export function enableDictionaryItem(id: number) {
-  return http.post(`/admin/dictionaries/items/${id}/enable`)
+  return enableSystemDictItem(id)
 }
 
 export function disableDictionaryItem(id: number) {
-  return http.post(`/admin/dictionaries/items/${id}/disable`)
+  return disableSystemDictItem(id)
 }
 
 export function deleteDictionaryItem(id: number) {
-  return http.delete(`/admin/dictionaries/items/${id}`)
+  return deleteSystemDictItem(id)
 }

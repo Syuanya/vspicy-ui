@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { computed, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { getOperationAuditRiskSummary } from '../../api/operationAudit'
+import { getOperationAuditRiskSummary } from '../../api/videoOperationAudit'
 import { useApiRequest } from '../../composables/useApiRequest'
 import ApiState from '../common/ApiState.vue'
 
